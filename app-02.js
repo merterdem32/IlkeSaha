@@ -150,15 +150,7 @@ function useCurrentLocationForDealer(){
   if(!navigator.geolocation){ alert('Tarayıcı konum desteği yok.'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     const lat=pos.coords.latitude, lng=pos.coords.longitude;
-    dealerLat.value=lat.toFixed(6);
-    dealerLng.value=lng.toFixed(6);
-    dealerLocationStatus.value='verified';
-    if(miniMap){
-      const ll=[lat,lng];
-      if(miniMarker) miniMarker.setLatLng(ll);
-      else miniMarker=L.marker(ll).addTo(miniMap);
-      miniMap.setView(ll,17);
-    }
+    setDealerCoordinates(lat,lng,'verified');
   },err=>alert('Konum alınamadı: '+err.message),{
     enableHighAccuracy:true,
     timeout:15000,
@@ -187,4 +179,64 @@ function undoRouteVisited(id){
   const target=quickMarkers[0];
   state.visits=state.visits.filter(v=>v.id!==target.id);
   persist();
+}
+
+
+function setDealerCoordinates(lat,lng,status='verified'){
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){
+    alert('Geçerli bir enlem/boylam bulunamadı.');
+    return false;
+  }
+  dealerLat.value=lat.toFixed(6);
+  dealerLng.value=lng.toFixed(6);
+  dealerLocationStatus.value=status;
+
+  if(miniMap){
+    const ll=[lat,lng];
+    if(miniMarker) miniMarker.setLatLng(ll);
+    else miniMarker=L.marker(ll).addTo(miniMap);
+    miniMap.setView(ll,18);
+  }
+  return true;
+}
+
+function extractCoordinatesFromText(text){
+  const raw=String(text||'').trim();
+  if(!raw)return null;
+
+  const decoded=decodeURIComponent(raw.replace(/%2C/gi,','));
+
+  // Plain coordinates: 41.012345, 28.987654
+  let m=decoded.match(/(-?\d{1,2}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)/);
+  if(m){
+    const lat=Number(m[1]),lng=Number(m[2]);
+    if(Math.abs(lat)<=90&&Math.abs(lng)<=180)return {lat,lng};
+  }
+
+  // Google Maps URLs often contain @lat,lng or !3dlat!4dlng
+  m=decoded.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
+  if(m)return {lat:Number(m[1]),lng:Number(m[2])};
+
+  m=decoded.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
+  if(m)return {lat:Number(m[1]),lng:Number(m[2])};
+
+  // Query parameters such as query=lat,lng / destination=lat,lng
+  m=decoded.match(/(?:query|destination|q)=(-?\d{1,2}\.\d+)%?2?C?[,\s]?(-?\d{1,3}\.\d+)/i);
+  if(m)return {lat:Number(m[1]),lng:Number(m[2])};
+
+  return null;
+}
+
+function applyDealerMapPaste(){
+  const input=document.getElementById('dealerMapPaste');
+  const hint=document.getElementById('dealerMapPasteHint');
+  const coords=extractCoordinatesFromText(input?.value||'');
+  if(!coords){
+    if(hint) hint.textContent='Koordinat bulunamadı. Google Maps’teki koordinatı kopyalayıp “41.xxxxxx, 28.xxxxxx” biçiminde yapıştırmayı dene.';
+    alert('Yapıştırdığın metinde koordinat bulamadım.');
+    return;
+  }
+  if(setDealerCoordinates(coords.lat,coords.lng,'verified')){
+    if(hint) hint.textContent='Koordinat alındı: '+coords.lat.toFixed(6)+', '+coords.lng.toFixed(6);
+  }
 }
