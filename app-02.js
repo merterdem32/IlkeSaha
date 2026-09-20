@@ -157,3 +157,28 @@ function useCurrentLocationForDealer(){
     maximumAge:0
   });
 }
+
+
+function undoRouteVisited(id){
+  const today=todayStr();
+  const todaysVisits=state.visits
+    .filter(v=>v.dealerId===id && String(v.date||'').slice(0,10)===today)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  if(!todaysVisits.length){
+    alert('Bu bayi bugün ziyaret edildi olarak işaretli değil.');
+    return;
+  }
+
+  // Only remove the most recent empty quick-visit marker.
+  // If the latest visit contains a note/follow-up, ask for confirmation before removing it.
+  const target=todaysVisits[0];
+  const hasContent=(target.note||'').trim() || (target.followUp||'').trim();
+
+  if(hasContent && !confirm('Bu ziyaret kaydında görüşme notu veya takip tarihi var. Yine de bugünkü ziyaret kaydını geri almak istiyor musun?')){
+    return;
+  }
+
+  state.visits=state.visits.filter(v=>v.id!==target.id);
+  persist();
+}
