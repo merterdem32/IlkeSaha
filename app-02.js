@@ -114,8 +114,16 @@ function buildRoute(){
 }
 
 
+function isQuickVisitMarker(v){
+  return !(v.note||'').trim() && !(v.followUp||'').trim();
+}
+
 function dealerVisitedToday(id){
-  return state.visits.some(v=>v.dealerId===id && String(v.date||'').slice(0,10)===todayStr());
+  return state.visits.some(v=>
+    v.dealerId===id &&
+    String(v.date||'').slice(0,10)===todayStr() &&
+    isQuickVisitMarker(v)
+  );
 }
 
 function markRouteVisited(id){
@@ -161,24 +169,22 @@ function useCurrentLocationForDealer(){
 
 function undoRouteVisited(id){
   const today=todayStr();
-  const todaysVisits=state.visits
-    .filter(v=>v.dealerId===id && String(v.date||'').slice(0,10)===today)
+  const quickMarkers=state.visits
+    .filter(v=>
+      v.dealerId===id &&
+      String(v.date||'').slice(0,10)===today &&
+      isQuickVisitMarker(v)
+    )
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  if(!todaysVisits.length){
-    alert('Bu bayi bugün ziyaret edildi olarak işaretli değil.');
+  if(!quickMarkers.length){
+    alert('Bu bayi için bugün geri alınabilecek bir ziyaret işareti yok.');
     return;
   }
 
-  // Only remove the most recent empty quick-visit marker.
-  // If the latest visit contains a note/follow-up, ask for confirmation before removing it.
-  const target=todaysVisits[0];
-  const hasContent=(target.note||'').trim() || (target.followUp||'').trim();
-
-  if(hasContent && !confirm('Bu ziyaret kaydında görüşme notu veya takip tarihi var. Yine de bugünkü ziyaret kaydını geri almak istiyor musun?')){
-    return;
-  }
-
+  // Sadece "Ziyaret Edildi" butonunun oluşturduğu boş işareti kaldır.
+  // Görüşme notu / takip tarihi içeren hiçbir kayıt silinmez.
+  const target=quickMarkers[0];
   state.visits=state.visits.filter(v=>v.id!==target.id);
   persist();
 }
