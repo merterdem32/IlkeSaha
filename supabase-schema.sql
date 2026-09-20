@@ -23,6 +23,7 @@ create table if not exists public.dealers (
   planned_stage text,
   original_route_logic text,
   departure text,
+  is_active boolean not null default true,
   updated_at timestamptz not null default now(),
   primary key (user_id, id)
 );
@@ -104,3 +105,7 @@ alter table public.meeting_notes enable row level security;
 drop policy if exists "meeting_notes_owner_all" on public.meeting_notes;
 create policy "meeting_notes_owner_all" on public.meeting_notes
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+
+alter table public.dealers
+  add column if not exists is_active boolean not null default true;
