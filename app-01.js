@@ -131,6 +131,8 @@ function openDealerModal(id){
   dealerLat.value=(d?.lat===null||d?.lat===undefined)?'':d.lat; dealerLng.value=(d?.lng===null||d?.lng===undefined)?'':d.lng;
   dealerLocationStatus.value=d?.locationStatus||'unset'; dealerFrequency.value=d?.frequency||14;
   dealerPriority.value=String(d?.priority||1); dealerGeneralNote.value=d?.generalNote||'';
+  if(document.getElementById('dealerMapPaste')) dealerMapPaste.value='';
+  if(document.getElementById('dealerMapPasteHint')) dealerMapPasteHint.textContent='Koordinatı veya içinde koordinat bulunan Google Maps linkini yapıştırabilirsin.';
   dealerDialog.showModal();
   setTimeout(()=>{
     if(miniMap){miniMap.remove(); miniMap=null}
