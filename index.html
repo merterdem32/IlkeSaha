@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="İlke Akü saha bayi, ziyaret, tahsilat ve rut yönetimi" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>İlke Saha</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <link rel="stylesheet" href="/styles.css"/>
+</head>
+<body>
+<header>
+  <div><h1>İlke Saha</h1><small>Bayi • Ziyaret • Tahsilat • Akıllı Rut</small></div>
+  <div><small>Prototip v0.2</small></div>
+</header>
+<div class="app">
+  <nav>
+    <button data-section="dashboard" class="active">Ana Sayfa</button>
+    <button data-section="dealers">Bayiler</button>
+    <button data-section="mapsec">Harita</button>
+    <button data-section="route">Rut Planı</button>
+    <button data-section="payments">Ödemeler</button>
+    <button data-section="settings">Ayarlar</button>
+  </nav>
+  <main>
+    <section id="dashboard" class="section active">
+      <div class="grid">
+        <div class="card span-3"><div class="muted">Toplam bayi</div><div id="kpiDealers" class="kpi">0</div></div>
+        <div class="card span-3"><div class="muted">Bugün ziyaret</div><div id="kpiVisits" class="kpi">0</div></div>
+        <div class="card span-3"><div class="muted">Bekleyen ödeme sözü</div><div id="kpiPayments" class="kpi">0</div></div>
+        <div class="card span-3"><div class="muted">Geciken ödeme</div><div id="kpiOverdue" class="kpi">0</div></div>
+        <div class="card span-6"><h3>Bugünkü rut</h3><div id="todayRoute" class="list muted">Henüz rut oluşturulmadı.</div></div>
+        <div class="card span-6"><h3>Yaklaşan / geciken ödemeler</h3><div id="dashboardPayments" class="list muted">Kayıt yok.</div></div>
+      </div>
+    </section>
+    <section id="dealers" class="section">
+      <div class="card">
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="openDealerModal()">+ Bayi Ekle</button>
+          <input id="dealerSearch" placeholder="Bayi, yetkili, ilçe ara..." style="max-width:340px" oninput="renderDealers()">
+        </div>
+        <div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Yetkili</th><th>Adres</th><th>Konum</th><th>Son ziyaret</th><th></th></tr></thead><tbody id="dealerRows"></tbody></table></div>
+      </div>
+    </section>
+    <section id="mapsec" class="section">
+      <div class="split">
+        <div class="card"><h3>Bayi haritası</h3><div class="muted" style="margin-bottom:10px">Bir bayi eklerken haritada istediğin yere tıklayarak daha gitmeden tahmini konum işaretleyebilirsin.</div><div id="map"></div></div>
+        <div class="card"><h3>Harita açıklaması</h3><div class="list">
+          <div class="item"><span class="badge b-warn">Tahmini</span><br><span class="muted">Hafızadan veya adres bilgisine göre işaretlenmiş konum.</span></div>
+          <div class="item"><span class="badge b-ok">Doğrulandı</span><br><span class="muted">Sahada teyit edilmiş konum.</span></div>
+          <div class="item"><span class="badge b-info">Ev</span><br><span class="muted">Rut başlangıç noktası.</span></div>
+        </div></div>
+      </div>
+    </section>
+    <section id="route" class="section">
+      <div class="grid">
+        <div class="card span-4">
+          <h3>Rut ayarları</h3>
+          <label>Çıkış saati</label><input id="startTime" type="time" value="08:30">
+          <label>İş bitiş saati</label><input id="endTime" type="time" value="18:30">
+          <label>Ortalama bayi ziyareti (dk)</label><input id="visitMinutes" type="number" value="20" min="5" max="180">
+          <label>Maksimum bayi</label><input id="maxStops" type="number" value="12" min="1" max="40">
+          <label><input id="prioritizePayments" type="checkbox" checked style="width:auto"> Ödeme sözü olanları önceliklendir</label>
+          <label><input id="preferHomeFinish" type="checkbox" checked style="width:auto"> Günün sonunda eve yaklaş</label>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0">
+          <div class="muted"><strong>Gönderdiğin mevcut rut planı</strong></div>
+          <label>Hafta</label><select id="planWeek"><option>1. HAFTA</option><option>2. HAFTA</option></select>
+          <label>Gün</label><select id="planDay"><option>PAZARTESİ</option><option>SALI</option><option>ÇARŞAMBA</option><option>PERŞEMBE</option><option>CUMA</option><option>CUMARTESİ</option></select>
+          <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="loadOriginalPlan()">Mevcut Planı Göster</button>
+          <button class="btn btn-accent" style="margin-top:12px;width:100%" onclick="buildRoute()">En Mantıklı Rutu Oluştur</button>
+          <button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="clearTodayRoute()">Bugünkü rutu temizle</button>
+        </div>
+        <div class="card span-8"><h3>Önerilen günlük rut</h3><div id="routeSummary" class="muted">Henüz hesaplanmadı.</div><div id="routeList" class="list" style="margin-top:12px"></div></div>
+        <div class="card span-12"><div id="routeMap"></div></div>
+      </div>
+    </section>
+    <section id="payments" class="section"><div class="card"><div class="toolbar"><button class="btn btn-primary" onclick="openPaymentModal()">+ Ödeme Sözü Ekle</button></div><div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Tutar</th><th>Söz tarihi</th><th>Durum</th><th>Açıklama</th><th></th></tr></thead><tbody id="paymentRows"></tbody></table></div></div></section>
+    <section id="settings" class="section">
+      <div class="grid">
+        <div class="card span-6">
+          <h3>Ev konumu</h3><div class="muted">Rut her zaman buradan başlar. Gün sonunda da mümkün olduğunca bu noktaya yakın kapanır.</div>
+          <label>Enlem</label><input id="homeLat" type="number" step="0.000001">
+          <label>Boylam</label><input id="homeLng" type="number" step="0.000001">
+          <div class="muted" style="margin-top:10px">Aşağıdaki haritada istediğin noktaya tıklayarak ev konumunu seçebilirsin.</div>
+          <div id="homeMap" style="height:330px;border-radius:12px;margin-top:8px"></div>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="saveHome()">Kaydet</button>
+          <button class="btn btn-ghost" style="margin-top:10px" onclick="useCurrentLocationForHome()">Mevcut konumumu kullan</button>
+        </div>
+        <div class="card span-6"><h3>Veri</h3><div class="muted">Bu prototip verileri yalnızca bu tarayıcıda localStorage içinde saklar.</div><button class="btn btn-ghost" style="margin-top:12px" onclick="exportData()">Verileri JSON dışa aktar</button><button class="btn btn-danger" style="margin-top:12px" onclick="resetAll()">Tüm prototip verisini sil</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+<dialog id="dealerDialog"><div class="modal">
+  <h3 id="dealerModalTitle">Bayi Ekle</h3><input type="hidden" id="dealerId">
+  <div class="row"><div><label>Bayi adı</label><input id="dealerName" placeholder="Örn. Yıldız Akü"></div><div><label>Yetkili</label><input id="dealerContact" placeholder="Örn. Mehmet Usta"></div></div>
+  <div class="row"><div><label>Telefon</label><input id="dealerPhone" placeholder="05..."></div><div><label>İlçe / Bölge</label><input id="dealerDistrict" placeholder="Örn. Bağcılar"></div></div>
+  <label>Adres</label><textarea id="dealerAddress" placeholder="Elindeki adres bilgisini buraya yaz."></textarea>
+  <div class="row"><div><label>Enlem</label><input id="dealerLat" type="number" step="0.000001"></div><div><label>Boylam</label><input id="dealerLng" type="number" step="0.000001"></div></div>
+  <label>Konum durumu</label><select id="dealerLocationStatus"><option value="unset">Konum girilmedi</option><option value="estimated">Tahmini</option><option value="verified">Doğrulandı</option></select>
+  <div class="muted" style="margin-top:10px">Konumu haritadan seçmek için aşağıdaki mini haritaya tıkla.</div><div id="dealerMiniMap" style="height:300px;border-radius:12px;margin-top:8px"></div>
+  <div class="row"><div><label>Ziyaret sıklığı (gün)</label><input id="dealerFrequency" type="number" value="14" min="1"></div><div><label>Öncelik</label><select id="dealerPriority"><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></div></div>
+  <label>Genel not</label><textarea id="dealerGeneralNote"></textarea>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="dealerDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="saveDealer()">Kaydet</button></div>
+</div></dialog>
+<dialog id="detailDialog"><div class="modal"><div id="dealerDetail"></div><div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="detailDialog.close()">Kapat</button></div></div></dialog>
+<dialog id="visitDialog"><div class="modal">
+  <h3>Ziyaret Kaydı</h3><input type="hidden" id="visitDealerId"><label>Tarih / Saat</label><input id="visitDate" type="datetime-local"><label>Görüşme notu</label><textarea id="visitNote" placeholder="Fiyat sordu, sipariş ihtimali, rakip marka, tekrar aranacak konu..."></textarea><label>Sonraki takip tarihi</label><input id="visitFollowUp" type="date">
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="visitDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="saveVisit()">Kaydet</button></div>
+</div></dialog>
+<dialog id="paymentDialog"><div class="modal">
+  <h3>Ödeme Sözü Ekle</h3><label>Bayi</label><select id="paymentDealer"></select><div class="row"><div><label>Tutar (TL)</label><input id="paymentAmount" type="number" min="0" step="0.01"></div><div><label>Söz tarihi</label><input id="paymentDate" type="date"></div></div><label>Açıklama</label><textarea id="paymentNote" placeholder="Örn. Havale yapacak, çek kapaması, bakiye ödeme..."></textarea>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="paymentDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="savePayment()">Kaydet</button></div>
+</div></dialog>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="/seed-data.js"></script>
+<script src="/app-01.js"></script>
+<script src="/app-02.js"></script>
+<script src="/app-03.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
