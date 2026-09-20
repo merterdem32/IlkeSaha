@@ -26,7 +26,7 @@ function renderRoute(){
       (visited?'<div><span class="badge b-ok" style="margin-top:6px">Bugün ziyaret edildi</span></div>':'')+
       '</div>'+
       '<div class="toolbar" style="margin:0;justify-content:flex-end">'+
-      (!visited?'<button class="btn btn-primary" onclick="markRouteVisited(\''+d.id+'\')">✓ Ziyaret Edildi</button>':'')+
+      (!visited?'<button class="btn btn-primary" onclick="markRouteVisited(\''+d.id+'\')">✓ Ziyaret Edildi</button>':'<button class="btn btn-ghost" onclick="undoRouteVisited(\''+d.id+'\')">↩ Geri Al</button>')+
       '<button class="btn btn-accent" onclick="openRouteNote(\''+d.id+'\')">Görüşme Notu</button>'+
       '<button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konum / Bayi</button>'+
       '</div></div>';
