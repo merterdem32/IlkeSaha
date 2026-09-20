@@ -102,7 +102,9 @@
   <label>Adres</label><textarea id="dealerAddress" placeholder="Elindeki adres bilgisini buraya yaz."></textarea>
   <div class="row"><div><label>Enlem</label><input id="dealerLat" type="number" step="0.000001"></div><div><label>Boylam</label><input id="dealerLng" type="number" step="0.000001"></div></div>
   <label>Konum durumu</label><select id="dealerLocationStatus"><option value="unset">Konum girilmedi</option><option value="estimated">Tahmini</option><option value="verified">Doğrulandı</option></select>
-  <div class="muted" style="margin-top:10px">Konumu haritadan seçmek için aşağıdaki mini haritaya tıkla.</div><div id="dealerMiniMap" style="height:300px;border-radius:12px;margin-top:8px"></div>
+  <div class="muted" style="margin-top:10px">Konumu haritadan seçebilir veya bayinin yanındaysan telefonun mevcut konumunu doğrudan kullanabilirsin.</div>
+  <button class="btn btn-accent" style="margin-top:10px;width:100%" onclick="useCurrentLocationForDealer()">📍 Mevcut Konumumu Bayi Konumu Yap</button>
+  <div id="dealerMiniMap" style="height:300px;border-radius:12px;margin-top:8px"></div>
   <div class="row"><div><label>Ziyaret sıklığı (gün)</label><input id="dealerFrequency" type="number" value="14" min="1"></div><div><label>Öncelik</label><select id="dealerPriority"><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></div></div>
   <label>Genel not</label><textarea id="dealerGeneralNote"></textarea>
   <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="dealerDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="saveDealer()">Kaydet</button></div>
