@@ -4,6 +4,15 @@ let state=JSON.parse(localStorage.getItem(storeKey)||'null')||{
   home:{lat:41.0082,lng:28.9784},
   dealers:seededDealers, visits:[], payments:[], todayRoute:[]
 };
+
+// Veri göçü: daha önce site 138 bayiyle açıldıysa localStorage eski listeyi tutuyordu.
+// Seed listesindeki eksik bayileri mevcut kullanıcı verisini bozmadan ekle.
+if(!Array.isArray(state.dealers)) state.dealers=[];
+const existingDealerIds=new Set(state.dealers.map(d=>d.id));
+for(const seeded of seededDealers){
+  if(!existingDealerIds.has(seeded.id)) state.dealers.push(seeded);
+}
+localStorage.setItem(storeKey,JSON.stringify(state));
 let map,routeMap,miniMap,miniMarker,homeMap,homeMarker,mainMarkers=[],routeLayer;
 
 function persist(){localStorage.setItem(storeKey,JSON.stringify(state)); renderAll();}
