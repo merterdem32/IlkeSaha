@@ -31,6 +31,7 @@ function renderRoute(){
       '<button class="btn btn-ghost" onclick="showVisitHistory(\''+d.id+'\')">Geçmiş Notlar</button>'+
       '<button class="btn btn-primary" onclick="openGoogleMapsDirections(\''+d.id+'\')">🧭 Yol Tarifi</button>'+
       '<button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konum / Bayi</button>'+
+      '<button class="btn btn-danger" onclick="deactivateDealerFromRoute(\''+d.id+'\')">Rut Dışı Bırak</button>'+
       '</div></div>';
   }).join('');
 }
