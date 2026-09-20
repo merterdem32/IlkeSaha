@@ -97,34 +97,65 @@ function routeDistance(order){
 }
 
 function optimizeDayRoute(dealers){
-  if(dealers.length<3) return dealers.slice();
-
-  // Başlangıç çözümü: evden en yakın komşu. Sonrasında 2-opt ile toplam
-  // ev -> tüm bayiler -> ev mesafesini küçültüyoruz.
-  const remaining=[...dealers];
-  const order=[];
-  let cur=state.home;
-  while(remaining.length){
-    let bestIndex=0;
-    let bestDist=Infinity;
-    remaining.forEach((d,i)=>{
-      const dist=distanceKm(cur,d);
-      if(dist<bestDist){bestDist=dist;bestIndex=i}
-    });
-    const [best]=remaining.splice(bestIndex,1);
-    order.push(best);
-    cur=best;
+  if(dealers.length<=1) return dealers.slice();
+  if(dealers.length===2){
+    const a=dealers[0],b=dealers[1];
+    return distanceKm(a,state.home)>distanceKm(b,state.home)?[a,b]:[b,a];
   }
 
+  // Saha kullanım kuralı:
+  // 1) Güne evden daha uzak bölgede başla.
+  // 2) Gün ilerledikçe eve doğru yaklaş.
+  // 3) Son bayi, mümkün olduğunca eve yakın olsun.
+  const byHome=[...dealers].sort((a,b)=>distanceKm(b,state.home)-distanceKm(a,state.home));
+  const first=byHome[0];
+  const last=byHome[byHome.length-1];
+  const middle=byHome.slice(1,-1);
+
+  // Uzak başlangıçtan, yakın sona doğru en kısa bağlantıları kur.
+  const order=[first];
+  let current=first;
+  let remaining=[...middle];
+
+  while(remaining.length){
+    let bestIndex=0;
+    let bestScore=Infinity;
+
+    remaining.forEach((d,i)=>{
+      const hop=distanceKm(current,d);
+      const homeDist=distanceKm(d,state.home);
+
+      // Eve yaklaşma eğilimini koru; ancak sırf eve yakın diye büyük sapma yapma.
+      const currentHomeDist=distanceKm(current,state.home);
+      const movingAwayPenalty=Math.max(0,homeDist-currentHomeDist)*2.0;
+      const score=hop+movingAwayPenalty;
+
+      if(score<bestScore){
+        bestScore=score;
+        bestIndex=i;
+      }
+    });
+
+    const [best]=remaining.splice(bestIndex,1);
+    order.push(best);
+    current=best;
+  }
+
+  order.push(last);
+
+  // İlk ve son bayiyi sabit tutup orta kısmı 2-opt ile iyileştir.
+  // Böylece rota kısalırken "uzakta başla, eve yakın bitir" kuralı bozulmaz.
   let improved=true;
   let passes=0;
   while(improved && passes<80){
     improved=false;
     passes++;
-    for(let i=0;i<order.length-1;i++){
-      for(let k=i+1;k<order.length;k++){
+
+    for(let i=1;i<order.length-2;i++){
+      for(let k=i+1;k<order.length-1;k++){
         const candidate=order.slice(0,i)
           .concat(order.slice(i,k+1).reverse(),order.slice(k+1));
+
         if(routeDistance(candidate)+0.001<routeDistance(order)){
           order.splice(0,order.length,...candidate);
           improved=true;
@@ -132,6 +163,7 @@ function optimizeDayRoute(dealers){
       }
     }
   }
+
   return order;
 }
 
