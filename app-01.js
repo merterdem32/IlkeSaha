@@ -15,7 +15,11 @@ for(const seeded of seededDealers){
 localStorage.setItem(storeKey,JSON.stringify(state));
 let map,routeMap,miniMap,miniMarker,homeMap,homeMarker,mainMarkers=[],routeLayer;
 
-function persist(){localStorage.setItem(storeKey,JSON.stringify(state)); renderAll();}
+function persist(){
+  localStorage.setItem(storeKey,JSON.stringify(state));
+  renderAll();
+  if(typeof scheduleCloudSync==='function') scheduleCloudSync();
+}
 
 function fmtMoney(n){return new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(Number(n||0))}
 
