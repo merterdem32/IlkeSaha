@@ -6,13 +6,13 @@ function saveDealer(){
     district:dealerDistrict.value.trim(),address:dealerAddress.value.trim(),
     lat:dealerLat.value===''?null:Number(dealerLat.value),lng:dealerLng.value===''?null:Number(dealerLng.value),
     locationStatus:(dealerLat.value===''||dealerLng.value==='')?'unset':dealerLocationStatus.value,frequency:Number(dealerFrequency.value||14),
-    priority:Number(dealerPriority.value||1),generalNote:dealerGeneralNote.value.trim()
+    priority:Number(dealerPriority.value||1),generalNote:dealerGeneralNote.value.trim(),isActive:true
   };
   const i=state.dealers.findIndex(x=>x.id===obj.id);
   if(i>=0){
     const old=state.dealers[i];
     obj.plannedWeek=old.plannedWeek; obj.plannedDay=old.plannedDay; obj.plannedOrder=old.plannedOrder;
-    obj.plannedStage=old.plannedStage; obj.originalRouteLogic=old.originalRouteLogic; obj.departure=old.departure;
+    obj.plannedStage=old.plannedStage; obj.originalRouteLogic=old.originalRouteLogic; obj.departure=old.departure; obj.isActive=old.isActive!==false;
     state.dealers[i]=obj;
   }else state.dealers.push(obj);
   dealerDialog.close(); persist();
@@ -72,46 +72,117 @@ function markPaid(id){const p=state.payments.find(x=>x.id===id);if(p){p.status='
 function loadOriginalPlan(){
   const week=planWeek.value, day=planDay.value;
   const planned=state.dealers
-    .filter(d=>d.plannedWeek===week && d.plannedDay===day)
+    .filter(d=>d.plannedWeek===week && d.plannedDay===day && d.isActive!==false)
     .sort((a,b)=>(a.plannedOrder||999)-(b.plannedOrder||999));
-  if(!planned.length){alert('Bu hafta/gün için kayıt bulunamadı.');return}
+  if(!planned.length){alert('Bu hafta/gün için aktif bayi kaydı bulunamadı.');return}
   state.todayRoute=planned.map(d=>d.id);
-  localStorage.setItem(storeKey,JSON.stringify(state));
-  renderAll();
-  const missing=planned.filter(d=>d.lat===null||d.lng===null).length;
-  routeSummary.innerHTML='Gönderdiğin plan yüklendi: <strong>'+planned.length+' bayi</strong>. '+(missing?'<span class="badge b-warn">'+missing+' bayinin konumu henüz işaretlenmedi</span>':'');
+  persist();
+  const missing=planned.filter(d=>d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng)).length;
+  routeSummary.innerHTML='Gönderdiğin plan yüklendi: <strong>'+planned.length+' bayi</strong>. '+
+    (missing?'<span class="badge b-warn">'+missing+' bayinin konumu henüz işaretlenmedi</span>':'');
+}
+
+function routeDistance(order){
+  let km=0;
+  let cur=state.home;
+  for(const d of order){
+    if(d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng)) continue;
+    km+=distanceKm(cur,d);
+    cur=d;
+  }
+  if(order.some(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng))){
+    km+=distanceKm(cur,state.home);
+  }
+  return km;
+}
+
+function optimizeDayRoute(dealers){
+  if(dealers.length<3) return dealers.slice();
+
+  // Başlangıç çözümü: evden en yakın komşu. Sonrasında 2-opt ile toplam
+  // ev -> tüm bayiler -> ev mesafesini küçültüyoruz.
+  const remaining=[...dealers];
+  const order=[];
+  let cur=state.home;
+  while(remaining.length){
+    let bestIndex=0;
+    let bestDist=Infinity;
+    remaining.forEach((d,i)=>{
+      const dist=distanceKm(cur,d);
+      if(dist<bestDist){bestDist=dist;bestIndex=i}
+    });
+    const [best]=remaining.splice(bestIndex,1);
+    order.push(best);
+    cur=best;
+  }
+
+  let improved=true;
+  let passes=0;
+  while(improved && passes<80){
+    improved=false;
+    passes++;
+    for(let i=0;i<order.length-1;i++){
+      for(let k=i+1;k<order.length;k++){
+        const candidate=order.slice(0,i)
+          .concat(order.slice(i,k+1).reverse(),order.slice(k+1));
+        if(routeDistance(candidate)+0.001<routeDistance(order)){
+          order.splice(0,order.length,...candidate);
+          improved=true;
+        }
+      }
+    }
+  }
+  return order;
 }
 
 function buildRoute(){
-  const candidates=state.dealers.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng));
-  if(!candidates.length){alert('Önce konumu kayıtlı en az bir bayi ekle.');return}
-  const max=Number(maxStops.value||12), paymentBoost=prioritizePayments.checked, homeFinish=preferHomeFinish.checked;
-  let current={...state.home}, remaining=[...candidates], selected=[];
-  for(let step=0;step<Math.min(max,remaining.length);step++){
-    let best=null,bestScore=Infinity;
-    const progress=step/Math.max(1,max-1);
-    for(const d of remaining){
-      const last=lastVisitForDealer(d.id);
-      const overdueRatio=Math.min(3, daysSince(last?.date)/(d.frequency||14));
-      const pri=Number(d.priority||1);
-      const pay=pendingPaymentForDealer(d.id)?1:0;
-      const dist=distanceKm(current,d);
-      const homeDist=distanceKm(d,state.home);
-      let score=dist - overdueRatio*2.2 - (pri-1)*2.5 - (paymentBoost?pay*3.0:0);
-      if(homeFinish)score += homeDist*(progress*0.55);
-      if(score<bestScore){bestScore=score;best=d}
-    }
-    if(!best)break;
-    selected.push(best); current={lat:best.lat,lng:best.lng}; remaining=remaining.filter(x=>x.id!==best.id);
+  // "En Mantıklı Rut" artık sadece seçili günün / ekrandaki planın bayilerini
+  // sıralar. Bayi sayısını azaltmaz, maksimum bayi limiti uygulamaz.
+  const baseIds=(state.todayRoute||[]).filter(Boolean);
+  let dayDealers=baseIds
+    .map(id=>state.dealers.find(d=>d.id===id))
+    .filter(d=>d && d.isActive!==false);
+
+  if(!dayDealers.length){
+    // Henüz gün yüklenmediyse seçili hafta/günü kullan.
+    dayDealers=state.dealers
+      .filter(d=>d.plannedWeek===planWeek.value && d.plannedDay===planDay.value && d.isActive!==false)
+      .sort((a,b)=>(a.plannedOrder||999)-(b.plannedOrder||999));
   }
-  if(homeFinish && selected.length>2){
-    const cut=Math.max(0,selected.length-3);
-    const tail=selected.slice(cut).sort((a,b)=>distanceKm(b,state.home)-distanceKm(a,state.home));
-    selected=selected.slice(0,cut).concat(tail);
+
+  if(!dayDealers.length){
+    alert('Önce ziyaret edeceğin günü "Mevcut Planı Göster" ile yükle.');
+    return;
   }
-  state.todayRoute=selected.map(d=>d.id);
+
+  const located=dayDealers.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng));
+  const missing=dayDealers.filter(d=>d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng));
+
+  const optimized=optimizeDayRoute(located);
+
+  // Konumu eksik bayi varsa kesinlikle silmiyoruz; mevcut plan sırasına göre sona ekliyoruz.
+  missing.sort((a,b)=>(a.plannedOrder||999)-(b.plannedOrder||999));
+  const finalRoute=optimized.concat(missing);
+
+  state.todayRoute=finalRoute.map(d=>d.id);
+  persist();
+
+  if(missing.length){
+    alert('Rut '+finalRoute.length+' bayinin tamamını içeriyor. '+missing.length+
+      ' bayinin konumu eksik olduğu için bunlar plan sırasına göre sona eklendi.');
+  }
+}
+
+function deactivateDealerFromRoute(id){
+  const d=state.dealers.find(x=>x.id===id);
+  if(!d)return;
+  const ok=confirm(d.name+' artık aktif rutlarda görünmesin mi?\n\nBu işlem bayiyi ve geçmiş kayıtlarını silmez; sadece aktif rutlardan çıkarır.');
+  if(!ok)return;
+  d.isActive=false;
+  state.todayRoute=(state.todayRoute||[]).filter(x=>x!==id);
   persist();
 }
+
 
 
 function isQuickVisitMarker(v){
