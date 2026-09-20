@@ -193,6 +193,20 @@ async function syncStateToCloud(initial=false){
       }
     }
 
+    {
+      const {error:delErr}=await supabaseClient.from('meeting_notes').delete().eq('user_id',cloudUser.id);
+      if(delErr) throw delErr;
+      if(Array.isArray(state.meetingNotes) && state.meetingNotes.length){
+        const rows=state.meetingNotes.map(m=>({
+          id:m.id,user_id:cloudUser.id,title:m.title||'Toplantı Notu',note:m.note||'',
+          meeting_date:m.meetingDate||null,status:m.status||'open',
+          created_at:m.createdAt||new Date().toISOString(),updated_at:new Date().toISOString()
+        }));
+        const {error}=await supabaseClient.from('meeting_notes').insert(rows);
+        if(error) throw error;
+      }
+    }
+
     const settings={
       user_id:cloudUser.id,
       home_lat:state.home?.lat??null,
@@ -223,13 +237,14 @@ async function loadStateFromCloud(){
   cloudHydrating=true;
   try{
     updateCloudUi('Buluttaki kayıtlar yükleniyor…');
-    const [dRes,vRes,pRes,sRes]=await Promise.all([
+    const [dRes,vRes,pRes,mRes,sRes]=await Promise.all([
       supabaseClient.from('dealers').select('*').order('name'),
       supabaseClient.from('visits').select('*').order('visit_date',{ascending:false}),
       supabaseClient.from('payment_promises').select('*').order('promise_date'),
+      supabaseClient.from('meeting_notes').select('*').order('created_at',{ascending:false}),
       supabaseClient.from('user_settings').select('*').maybeSingle()
     ]);
-    for(const r of [dRes,vRes,pRes,sRes]) if(r.error) throw r.error;
+    for(const r of [dRes,vRes,pRes,mRes,sRes]) if(r.error) throw r.error;
 
     const cloudDealers=(dRes.data||[]).map(dealerFromDb);
     const byId=new Map(cloudDealers.map(d=>[d.id,d]));
@@ -242,6 +257,11 @@ async function loadStateFromCloud(){
     state.payments=(pRes.data||[]).map(p=>({
       id:p.id,dealerId:p.dealer_id,amount:Number(p.amount),date:p.promise_date,
       note:p.note||'',status:p.status||'pending',paidAt:p.paid_at||null
+    }));
+
+    state.meetingNotes=(mRes.data||[]).map(m=>({
+      id:m.id,title:m.title,note:m.note||'',meetingDate:m.meeting_date||'',
+      status:m.status||'open',createdAt:m.created_at
     }));
 
     const s=sRes.data;
