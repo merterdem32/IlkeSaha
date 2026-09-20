@@ -29,3 +29,151 @@ dialog{border:0;border-radius:14px;padding:0;max-width:620px;width:92%;box-shado
 .modal{padding:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.note{padding:10px;border-left:4px solid #38bdf8;background:#f8fafc;border-radius:8px;margin:8px 0}
 .payment{padding:10px;border-left:4px solid #f59e0b;background:#fff7ed;border-radius:8px;margin:8px 0}
 @media(max-width:900px){.app{grid-template-columns:1fr}nav{position:sticky;top:58px;z-index:999;flex-direction:row;overflow:auto;padding:8px}nav button{white-space:nowrap;padding:9px 11px}.span-3,.span-4,.span-6,.span-8,.span-12{grid-column:span 12}.split,.row{grid-template-columns:1fr}#map,#routeMap{height:430px}}
+
+
+/* Responsive/mobile polish */
+.brand{min-width:0}
+.brand small{display:block;margin-top:2px}
+.header-actions{display:flex;align-items:center;gap:8px;min-width:0}
+.route-info{min-width:0;flex:1}
+.route-actions{margin:0;justify-content:flex-end}
+.route-info strong{overflow-wrap:anywhere}
+.route-stop{min-width:0}
+
+@media(max-width:600px){
+  body{background:#f1f5f9}
+
+  header{
+    padding:10px 12px;
+    gap:10px;
+    align-items:flex-start;
+  }
+  .brand{flex:1 1 auto}
+  .brand h1{font-size:17px;line-height:1.15}
+  .brand small{
+    font-size:11px;
+    line-height:1.25;
+    max-width:180px;
+  }
+  .header-actions{
+    flex:0 0 auto;
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    max-width:52%;
+  }
+  #cloudStatus{
+    width:100%;
+    text-align:right;
+    font-size:10px;
+    line-height:1.15;
+  }
+  #cloudAccountBtn{
+    padding:7px 9px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .prototype-label{display:none}
+
+  .app{min-height:calc(100vh - 64px)}
+  nav{
+    top:64px;
+    padding:6px 8px;
+    gap:4px;
+    scrollbar-width:none;
+    box-shadow:0 2px 6px rgba(15,23,42,.08);
+  }
+  nav::-webkit-scrollbar{display:none}
+  nav button{
+    padding:8px 10px;
+    font-size:13px;
+    border-radius:8px;
+  }
+
+  main{padding:10px}
+  .grid{gap:10px}
+  .card{
+    padding:12px;
+    border-radius:12px;
+  }
+
+  .route-stop{
+    display:grid;
+    grid-template-columns:32px minmax(0,1fr);
+    gap:8px 10px;
+    padding:12px;
+    align-items:start;
+  }
+  .route-stop .num{
+    width:32px;
+    height:32px;
+    font-size:14px;
+    grid-column:1;
+    grid-row:1;
+  }
+  .route-info{
+    grid-column:2;
+    grid-row:1;
+    min-width:0;
+  }
+  .route-info strong{
+    font-size:16px;
+    line-height:1.18;
+    margin-bottom:4px;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+  .route-info .muted{
+    display:block;
+    line-height:1.35;
+    font-size:12px;
+  }
+  .route-actions{
+    grid-column:1 / -1;
+    grid-row:2;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    width:100%;
+  }
+  .route-actions .btn{
+    width:100%;
+    min-height:44px;
+    padding:9px 8px;
+    font-size:13px;
+    line-height:1.15;
+    white-space:normal;
+  }
+  .route-actions .btn:last-child:nth-child(odd){
+    grid-column:1 / -1;
+  }
+
+  #routeSummary{
+    line-height:1.55;
+    font-size:12px;
+  }
+  #routeSummary .badge{
+    margin:3px 0;
+  }
+
+  .toolbar{gap:7px}
+  .btn{min-height:40px}
+  input,select,textarea{font-size:16px}
+
+  #map,#routeMap{height:330px}
+  dialog{
+    width:calc(100% - 20px);
+    max-height:90vh;
+    overflow:auto;
+  }
+  .modal{padding:14px}
+
+  table{min-width:720px}
+}
+
+@media(max-width:380px){
+  .route-actions{grid-template-columns:1fr}
+  .route-actions .btn:last-child:nth-child(odd){grid-column:auto}
+  .brand small{max-width:145px}
+  .header-actions{max-width:50%}
+}
