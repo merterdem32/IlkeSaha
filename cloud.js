@@ -55,7 +55,11 @@ async function cloudSignUp(){
   const email=cloudEmail.value.trim();
   const password=cloudPassword.value;
   if(!email||password.length<6){alert('E-posta ve en az 6 karakterli parola gir.');return}
-  const {data,error}=await supabaseClient.auth.signUp({email,password});
+  const {data,error}=await supabaseClient.auth.signUp({
+    email,
+    password,
+    options:{ emailRedirectTo: window.location.origin }
+  });
   if(error){alert('Hesap oluşturulamadı: '+error.message);return}
   if(data.session){
     cloudUser=data.user;
@@ -64,6 +68,18 @@ async function cloudSignUp(){
   }else{
     alert('Hesap oluşturuldu. Supabase e-posta doğrulaması açıksa gelen kutundaki bağlantıyı onayla, sonra giriş yap.');
   }
+}
+
+async function cloudResendConfirmation(){
+  const email=cloudEmail.value.trim();
+  if(!email){alert('Önce e-posta adresini gir.');return}
+  const {error}=await supabaseClient.auth.resend({
+    type:'signup',
+    email,
+    options:{ emailRedirectTo: window.location.origin }
+  });
+  if(error){alert('Doğrulama e-postası gönderilemedi: '+error.message);return}
+  alert('Yeni doğrulama e-postası gönderildi. Eski e-postadaki bağlantı yerine en son gelen bağlantıyı kullan.');
 }
 
 async function cloudSignIn(){
