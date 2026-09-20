@@ -1,5 +1,5 @@
-const CACHE = 'ilke-saha-v3';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css'];
+const CACHE = 'ilke-saha-v4';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
