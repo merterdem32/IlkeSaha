@@ -10,12 +10,16 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260920-3"/>
+  <link rel="stylesheet" href="/styles.css?v=20260920-4"/>
 </head>
 <body>
 <header>
   <div><h1>İlke Saha</h1><small>Bayi • Ziyaret • Tahsilat • Akıllı Rut</small></div>
-  <div><small>Prototip v0.2</small></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <small id="cloudStatus">Bulut bağlantısı kontrol ediliyor…</small>
+    <button id="cloudAccountBtn" class="btn btn-ghost" onclick="openCloudAccount()">☁ Bulut: Giriş Yap</button>
+    <small>Prototip v0.3</small>
+  </div>
 </header>
 <div class="app">
   <nav>
@@ -95,6 +99,29 @@
     </section>
   </main>
 </div>
+<dialog id="cloudDialog"><div class="modal">
+  <h3>Bulut Hesabı</h3>
+  <div id="cloudSignedOutBox">
+    <div class="muted">Aynı e-posta hesabıyla telefon, bilgisayar ve farklı tarayıcılardan aynı verilere erişebilirsin.</div>
+    <label>E-posta</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="ornek@email.com">
+    <label>Parola</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Parolan">
+    <div class="toolbar" style="margin-top:14px">
+      <button class="btn btn-primary" onclick="cloudSignIn()">Giriş Yap</button>
+      <button class="btn btn-accent" onclick="cloudSignUp()">Hesap Oluştur</button>
+      <button class="btn btn-ghost" onclick="cloudDialog.close()">Kapat</button>
+    </div>
+  </div>
+  <div id="cloudSignedInBox" style="display:none">
+    <div class="item"><strong>Giriş yapılan hesap</strong><span id="cloudSignedInEmail"></span></div>
+    <div class="muted">Bulut senkronizasyonu aktif. Bu tarayıcıdaki değişiklikler Supabase'e kaydedilir.</div>
+    <div class="toolbar" style="margin-top:14px">
+      <button class="btn btn-accent" onclick="syncStateToCloud(false)">Şimdi Senkronize Et</button>
+      <button class="btn btn-danger" onclick="cloudSignOut()">Çıkış Yap</button>
+      <button class="btn btn-ghost" onclick="cloudDialog.close()">Kapat</button>
+    </div>
+  </div>
+</div></dialog>
+
 <dialog id="dealerDialog"><div class="modal">
   <h3 id="dealerModalTitle">Bayi Ekle</h3><input type="hidden" id="dealerId">
   <div class="row"><div><label>Bayi adı</label><input id="dealerName" placeholder="Örn. Yıldız Akü"></div><div><label>Yetkili</label><input id="dealerContact" placeholder="Örn. Mehmet Usta"></div></div>
@@ -119,20 +146,23 @@
   <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="paymentDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="savePayment()">Kaydet</button></div>
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="/seed-01.js?v=20260920-3"></script>
-<script src="/seed-02.js?v=20260920-3"></script>
-<script src="/seed-03.js?v=20260920-3"></script>
-<script src="/seed-04.js?v=20260920-3"></script>
-<script src="/seed-05.js?v=20260920-3"></script>
-<script src="/seed-06.js?v=20260920-3"></script>
-<script src="/seed-07.js?v=20260920-3"></script>
-<script src="/seed-08.js?v=20260920-3"></script>
-<script src="/seed-09.js?v=20260920-3"></script>
-<script src="/seed-10.js?v=20260920-3"></script>
-<script src="/seed-11.js?v=20260920-3"></script>
-<script src="/app-01.js?v=20260920-3"></script>
-<script src="/app-02.js?v=20260920-3"></script>
-<script src="/app-03.js?v=20260920-3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js?v=20260920-4"></script>
+<script src="/seed-01.js?v=20260920-4"></script>
+<script src="/seed-02.js?v=20260920-4"></script>
+<script src="/seed-03.js?v=20260920-4"></script>
+<script src="/seed-04.js?v=20260920-4"></script>
+<script src="/seed-05.js?v=20260920-4"></script>
+<script src="/seed-06.js?v=20260920-4"></script>
+<script src="/seed-07.js?v=20260920-4"></script>
+<script src="/seed-08.js?v=20260920-4"></script>
+<script src="/seed-09.js?v=20260920-4"></script>
+<script src="/seed-10.js?v=20260920-4"></script>
+<script src="/seed-11.js?v=20260920-4"></script>
+<script src="/app-01.js?v=20260920-4"></script>
+<script src="/app-02.js?v=20260920-4"></script>
+<script src="/app-03.js?v=20260920-4"></script>
+<script src="/cloud.js?v=20260920-4"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
