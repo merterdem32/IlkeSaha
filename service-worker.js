@@ -1,4 +1,4 @@
-const CACHE = 'ilke-saha-v2';
+const CACHE = 'ilke-saha-v3';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css'];
 
 self.addEventListener('install', event => {
