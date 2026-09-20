@@ -112,3 +112,48 @@ function buildRoute(){
   state.todayRoute=selected.map(d=>d.id);
   persist();
 }
+
+
+function dealerVisitedToday(id){
+  return state.visits.some(v=>v.dealerId===id && String(v.date||'').slice(0,10)===todayStr());
+}
+
+function markRouteVisited(id){
+  if(dealerVisitedToday(id)){ alert('Bu bayi bugün zaten ziyaret edildi olarak işaretlenmiş.'); return; }
+  state.visits.push({
+    id:crypto.randomUUID(),
+    dealerId:id,
+    date:dtLocalNow(),
+    note:'',
+    followUp:''
+  });
+  persist();
+}
+
+function openRouteNote(id){
+  visitDealerId.value=id;
+  visitDate.value=dtLocalNow();
+  visitNote.value='';
+  visitFollowUp.value='';
+  visitDialog.showModal();
+}
+
+function useCurrentLocationForDealer(){
+  if(!navigator.geolocation){ alert('Tarayıcı konum desteği yok.'); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude, lng=pos.coords.longitude;
+    dealerLat.value=lat.toFixed(6);
+    dealerLng.value=lng.toFixed(6);
+    dealerLocationStatus.value='verified';
+    if(miniMap){
+      const ll=[lat,lng];
+      if(miniMarker) miniMarker.setLatLng(ll);
+      else miniMarker=L.marker(ll).addTo(miniMap);
+      miniMap.setView(ll,17);
+    }
+  },err=>alert('Konum alınamadı: '+err.message),{
+    enableHighAccuracy:true,
+    timeout:15000,
+    maximumAge:0
+  });
+}
