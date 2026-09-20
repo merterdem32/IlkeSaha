@@ -1,22 +1,37 @@
 if(!Array.isArray(state.meetingNotes)) state.meetingNotes=[];
 
 function saveMeetingNote(){
-  const title=meetingTitle.value.trim();
-  const note=meetingNote.value.trim();
-  if(!title && !note){alert('Başlık veya not gir.');return}
+  const titleEl=document.getElementById('meetingTitle');
+  const noteEl=document.getElementById('meetingNote');
+  const dateEl=document.getElementById('meetingDate');
+
+  if(!titleEl || !noteEl || !dateEl){
+    alert('Toplantı notu formu yüklenemedi. Sayfayı yenileyip tekrar dene.');
+    return;
+  }
+
+  const title=titleEl.value.trim();
+  const note=noteEl.value.trim();
+  const meetingDate=dateEl.value||'';
+
+  if(!title && !note){
+    alert('Başlık veya not gir.');
+    return;
+  }
 
   state.meetingNotes.push({
     id:crypto.randomUUID(),
     title:title||'Toplantı Notu',
-    note:note,
-    meetingDate:meetingDate.value||'',
+    note,
+    meetingDate,
     status:'open',
     createdAt:new Date().toISOString()
   });
 
-  meetingTitle.value='';
-  meetingNote.value='';
-  meetingDate.value='';
+  titleEl.value='';
+  noteEl.value='';
+  dateEl.value='';
+
   persist();
   renderMeetingNotes();
 }
@@ -39,7 +54,10 @@ function deleteMeetingNote(id){
 function renderMeetingNotes(){
   const list=document.getElementById('meetingNotesList');
   if(!list)return;
-  const filter=document.getElementById('meetingFilter')?.value||'open';
+
+  const filterEl=document.getElementById('meetingFilter');
+  const filter=filterEl?.value||'open';
+
   let items=[...state.meetingNotes].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   if(filter==='open')items=items.filter(x=>x.status!=='done');
   if(filter==='done')items=items.filter(x=>x.status==='done');
@@ -60,9 +78,11 @@ function renderMeetingNotes(){
   }).join(''):'<div class="muted">Bu filtrede toplantı notu yok.</div>';
 }
 
-const originalRenderAllForMeetings=renderAll;
-renderAll=function(){
-  originalRenderAllForMeetings();
+// renderAll davranışını bozmak yerine, mevcut renderAll'i güvenli şekilde sar.
+const baseRenderAll=window.renderAll;
+window.renderAll=function(){
+  if(typeof baseRenderAll==='function') baseRenderAll();
   renderMeetingNotes();
 };
-renderMeetingNotes();
+
+document.addEventListener('DOMContentLoaded',()=>renderMeetingNotes());
