@@ -19,7 +19,11 @@ function persist(){localStorage.setItem(storeKey,JSON.stringify(state)); renderA
 
 function fmtMoney(n){return new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(Number(n||0))}
 
-function todayStr(){return new Date().toISOString().slice(0,10)}
+function todayStr(){
+  const d=new Date();
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
 
 function dtLocalNow(){
   const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16)
