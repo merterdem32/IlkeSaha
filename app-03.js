@@ -29,6 +29,7 @@ function renderRoute(){
       (!visited?'<button class="btn btn-primary" onclick="markRouteVisited(\''+d.id+'\')">✓ Ziyaret Edildi</button>':'<button class="btn btn-ghost" onclick="undoRouteVisited(\''+d.id+'\')">↩ Geri Al</button>')+
       '<button class="btn btn-accent" onclick="openRouteNote(\''+d.id+'\')">Görüşme Notu</button>'+
       '<button class="btn btn-ghost" onclick="showVisitHistory(\''+d.id+'\')">Geçmiş Notlar</button>'+
+      '<button class="btn btn-primary" onclick="openGoogleMapsDirections(\''+d.id+'\')">🧭 Yol Tarifi</button>'+
       '<button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konum / Bayi</button>'+
       '</div></div>';
   }).join('');
@@ -120,4 +121,21 @@ function showVisitHistory(id){
       }).join('')
     : '<div class="muted">Bu bayi için kayıtlı görüşme notu bulunmuyor.</div>';
   historyDialog.showModal();
+}
+
+
+function openGoogleMapsDirections(id){
+  const d=state.dealers.find(x=>x.id===id);
+  if(!d){alert('Bayi bulunamadı.');return;}
+  let destination='';
+  if(d.lat!==null && d.lng!==null && isFinite(d.lat) && isFinite(d.lng)){
+    destination=encodeURIComponent(d.lat+','+d.lng);
+  }else if((d.address||'').trim()){
+    destination=encodeURIComponent((d.address||'')+' '+(d.district||'')+' İstanbul');
+  }else{
+    alert('Bu bayinin kayıtlı konumu veya adresi yok.');
+    return;
+  }
+  const url='https://www.google.com/maps/dir/?api=1&destination='+destination+'&travelmode=driving';
+  window.open(url,'_blank','noopener');
 }
