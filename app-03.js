@@ -28,6 +28,7 @@ function renderRoute(){
       '<div class="toolbar" style="margin:0;justify-content:flex-end">'+
       (!visited?'<button class="btn btn-primary" onclick="markRouteVisited(\''+d.id+'\')">✓ Ziyaret Edildi</button>':'<button class="btn btn-ghost" onclick="undoRouteVisited(\''+d.id+'\')">↩ Geri Al</button>')+
       '<button class="btn btn-accent" onclick="openRouteNote(\''+d.id+'\')">Görüşme Notu</button>'+
+      '<button class="btn btn-ghost" onclick="showVisitHistory(\''+d.id+'\')">Geçmiş Notlar</button>'+
       '<button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konum / Bayi</button>'+
       '</div></div>';
   }).join('');
@@ -100,3 +101,23 @@ function renderAll(){
   renderDashboard(); renderDealers(); renderPayments(); renderRoute(); renderMap(); renderRouteMap();
 }
 nav(); renderAll();
+
+
+function showVisitHistory(id){
+  const d=state.dealers.find(x=>x.id===id);
+  const visits=state.visits
+    .filter(v=>v.dealerId===id && ((v.note||'').trim() || (v.followUp||'').trim()))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  historyTitle.textContent=(d?.name||'Bayi')+' • Geçmiş Görüşmeler';
+  historyContent.innerHTML=visits.length
+    ? visits.map(v=>{
+        const date=new Date(v.date).toLocaleString('tr-TR');
+        return '<div class="item"><strong>'+date+'</strong>'+
+          ((v.note||'').trim()?'<div style="margin-top:6px">'+esc(v.note)+'</div>':'')+
+          ((v.followUp||'').trim()?'<div class="muted" style="margin-top:6px">Takip tarihi: '+esc(v.followUp)+'</div>':'')+
+          '</div>';
+      }).join('')
+    : '<div class="muted">Bu bayi için kayıtlı görüşme notu bulunmuyor.</div>';
+  historyDialog.showModal();
+}
