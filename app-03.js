@@ -8,14 +8,30 @@ function renderRoute(){
   const visitMin=Number(visitMinutes.value||20)*ds.length;
   const driveMin=Math.round((km/30)*60);
   const missing=ds.length-located.length;
-  routeSummary.innerHTML=ds.length+' bayi '+(located.length?'• işaretli konumlara göre yaklaşık <strong>'+km.toFixed(1)+' km</strong> ':'')+
+  const visitedCount=ds.filter(d=>dealerVisitedToday(d.id)).length;
+  routeSummary.innerHTML=
+    '<strong>'+visitedCount+'/'+ds.length+' ziyaret tamamlandı</strong> '+
+    (located.length?'• işaretli konumlara göre yaklaşık <strong>'+km.toFixed(1)+' km</strong> ':'')+
     (missing?'• <span class="badge b-warn">'+missing+' konum eksik</span> ':'')+
     (located.length?'• kaba süre tahmini '+(((visitMin+driveMin)/60)|0)+' sa '+((visitMin+driveMin)%60)+' dk <span class="muted">(trafik servisi bağlanmadı)</span>':'');
-  routeList.innerHTML=ds.map((d,i)=>'<div class="item route-stop"><div class="num">'+(i+1)+'</div><div><strong>'+esc(d.name)+'</strong><span class="muted">'+esc(d.district||'')+' • '+
-    (d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini konum':'Konum girilmedi')+' '+(d.plannedStage?'• '+esc(d.plannedStage):'')+
-    '</span></div><div style="margin-left:auto"><button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konumu Düzenle</button></div></div>').join('');
-}
 
+  routeList.innerHTML=ds.map((d,i)=>{
+    const visited=dealerVisitedToday(d.id);
+    return '<div class="item route-stop" style="'+(visited?'opacity:.72;background:#f0fdf4;':'')+'">'+
+      '<div class="num">'+(visited?'✓':(i+1))+'</div>'+
+      '<div style="min-width:0;flex:1"><strong>'+esc(d.name)+'</strong>'+
+      '<span class="muted">'+esc(d.district||'')+' • '+
+      (d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini konum':'Konum girilmedi')+
+      ' '+(d.plannedStage?'• '+esc(d.plannedStage):'')+'</span>'+
+      (visited?'<div><span class="badge b-ok" style="margin-top:6px">Bugün ziyaret edildi</span></div>':'')+
+      '</div>'+
+      '<div class="toolbar" style="margin:0;justify-content:flex-end">'+
+      (!visited?'<button class="btn btn-primary" onclick="markRouteVisited(\''+d.id+'\')">✓ Ziyaret Edildi</button>':'')+
+      '<button class="btn btn-accent" onclick="openRouteNote(\''+d.id+'\')">Görüşme Notu</button>'+
+      '<button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konum / Bayi</button>'+
+      '</div></div>';
+  }).join('');
+}
 function clearTodayRoute(){state.todayRoute=[];persist()}
 
 function initRouteMap(){
