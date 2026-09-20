@@ -136,7 +136,7 @@ function dealerToDb(d){
     priority:Number(d.priority||1),general_note:d.generalNote||null,
     planned_week:d.plannedWeek||null,planned_day:d.plannedDay||null,
     planned_order:d.plannedOrder??null,planned_stage:d.plannedStage||null,
-    original_route_logic:d.originalRouteLogic||null,departure:d.departure||null,
+    original_route_logic:d.originalRouteLogic||null,departure:d.departure||null,is_active:d.isActive!==false,
     updated_at:new Date().toISOString()
   };
 }
@@ -148,7 +148,7 @@ function dealerFromDb(d){
     frequency:d.frequency||14,priority:d.priority||1,generalNote:d.general_note||'',
     plannedWeek:d.planned_week||'',plannedDay:d.planned_day||'',
     plannedOrder:d.planned_order??0,plannedStage:d.planned_stage||'',
-    originalRouteLogic:d.original_route_logic||'',departure:d.departure||'08:30'
+    originalRouteLogic:d.original_route_logic||'',departure:d.departure||'08:30',isActive:d.is_active!==false
   };
 }
 
