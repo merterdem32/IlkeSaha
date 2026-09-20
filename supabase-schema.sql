@@ -85,3 +85,22 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "settings_owner_all" on public.user_settings;
 create policy "settings_owner_all" on public.user_settings
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+
+create table if not exists public.meeting_notes (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  note text not null,
+  meeting_date date,
+  status text not null default 'open',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+alter table public.meeting_notes enable row level security;
+
+drop policy if exists "meeting_notes_owner_all" on public.meeting_notes;
+create policy "meeting_notes_owner_all" on public.meeting_notes
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
