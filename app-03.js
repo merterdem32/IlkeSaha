@@ -1,0 +1,86 @@
+function renderRoute(){
+  if(!state.todayRoute.length){routeSummary.textContent='Henüz hesaplanmadı.';routeList.innerHTML='';return}
+  const ds=state.todayRoute.map(id=>state.dealers.find(x=>x.id===id)).filter(Boolean);
+  const located=ds.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng));
+  let km=0,cur=state.home;
+  located.forEach(d=>{km+=distanceKm(cur,d);cur=d});
+  if(located.length) km+=distanceKm(cur,state.home);
+  const visitMin=Number(visitMinutes.value||20)*ds.length;
+  const driveMin=Math.round((km/30)*60);
+  const missing=ds.length-located.length;
+  routeSummary.innerHTML=ds.length+' bayi '+(located.length?'• işaretli konumlara göre yaklaşık <strong>'+km.toFixed(1)+' km</strong> ':'')+
+    (missing?'• <span class="badge b-warn">'+missing+' konum eksik</span> ':'')+
+    (located.length?'• kaba süre tahmini '+(((visitMin+driveMin)/60)|0)+' sa '+((visitMin+driveMin)%60)+' dk <span class="muted">(trafik servisi bağlanmadı)</span>':'');
+  routeList.innerHTML=ds.map((d,i)=>'<div class="item route-stop"><div class="num">'+(i+1)+'</div><div><strong>'+esc(d.name)+'</strong><span class="muted">'+esc(d.district||'')+' • '+
+    (d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini konum':'Konum girilmedi')+' '+(d.plannedStage?'• '+esc(d.plannedStage):'')+
+    '</span></div><div style="margin-left:auto"><button class="btn btn-ghost" onclick="openDealerModal(\''+d.id+'\')">Konumu Düzenle</button></div></div>').join('');
+}
+
+function clearTodayRoute(){state.todayRoute=[];persist()}
+
+function initRouteMap(){
+  if(routeMap)return;
+  routeMap=L.map('routeMap').setView([state.home.lat,state.home.lng],10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(routeMap);
+}
+
+function renderRouteMap(){
+  if(!routeMap)return;
+  routeMap.eachLayer(l=>{ if(!(l instanceof L.TileLayer)) routeMap.removeLayer(l); });
+  const points=[[state.home.lat,state.home.lng]];
+  L.marker(points[0]).addTo(routeMap).bindPopup('Ev');
+  state.todayRoute.map(id=>state.dealers.find(x=>x.id===id)).filter(d=>d&&d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).forEach((d,i)=>{
+    points.push([d.lat,d.lng]); L.marker([d.lat,d.lng]).addTo(routeMap).bindPopup((i+1)+'. '+esc(d.name));
+  });
+  if(points.length>1){
+    points.push([state.home.lat,state.home.lng]);
+    routeLayer=L.polyline(points,{weight:4}).addTo(routeMap);
+    routeMap.fitBounds(points,{padding:[30,30]});
+  } else routeMap.setView([state.home.lat,state.home.lng],10);
+}
+
+function initHomeMap(){
+  if(homeMap)return;
+  homeMap=L.map('homeMap').setView([state.home.lat,state.home.lng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(homeMap);
+  homeMarker=L.marker([state.home.lat,state.home.lng]).addTo(homeMap);
+  homeMap.on('click',e=>{
+    homeLat.value=e.latlng.lat.toFixed(6);
+    homeLng.value=e.latlng.lng.toFixed(6);
+    homeMarker.setLatLng(e.latlng);
+  });
+}
+
+function saveHome(){
+  state.home={lat:Number(homeLat.value),lng:Number(homeLng.value)};
+  if(homeMarker)homeMarker.setLatLng([state.home.lat,state.home.lng]);
+  persist();
+}
+
+function useCurrentLocationForHome(){
+  if(!navigator.geolocation){alert('Tarayıcı konum desteği yok.');return}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    state.home={lat:pos.coords.latitude,lng:pos.coords.longitude};
+    homeLat.value=state.home.lat.toFixed(6); homeLng.value=state.home.lng.toFixed(6);
+    if(homeMarker)homeMarker.setLatLng([state.home.lat,state.home.lng]);
+    if(homeMap)homeMap.setView([state.home.lat,state.home.lng],15);
+    persist();
+  },err=>alert('Konum alınamadı: '+err.message));
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ilke-saha-veri.json';a.click();URL.revokeObjectURL(a.href);
+}
+
+function resetAll(){
+  if(confirm('Tüm prototip verileri silinsin mi?')){localStorage.removeItem(storeKey);location.reload()}
+}
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function renderAll(){
+  homeLat.value=state.home.lat; homeLng.value=state.home.lng;
+  renderDashboard(); renderDealers(); renderPayments(); renderRoute(); renderMap(); renderRouteMap();
+}
+nav(); renderAll();
