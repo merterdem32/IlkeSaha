@@ -19,13 +19,13 @@ function renderRoute(){
     const visited=dealerVisitedToday(d.id);
     return '<div class="item route-stop" style="'+(visited?'opacity:.72;background:#f0fdf4;':'')+'">'+
       '<div class="num">'+(visited?'✓':(i+1))+'</div>'+
-      '<div style="min-width:0;flex:1"><strong>'+esc(d.name)+'</strong>'+
+      '<div class="route-info"><strong>'+esc(d.name)+'</strong>'+
       '<span class="muted">'+esc(d.district||'')+' • '+
       (d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini konum':'Konum girilmedi')+
       ' '+(d.plannedStage?'• '+esc(d.plannedStage):'')+'</span>'+
       (visited?'<div><span class="badge b-ok" style="margin-top:6px">Bugün ziyaret edildi</span></div>':'')+
       '</div>'+
-      '<div class="toolbar" style="margin:0;justify-content:flex-end">'+
+      '<div class="toolbar route-actions">'+
       (!visited?'<button class="btn btn-primary" onclick="markRouteVisited(\''+d.id+'\')">✓ Ziyaret Edildi</button>':'<button class="btn btn-ghost" onclick="undoRouteVisited(\''+d.id+'\')">↩ Geri Al</button>')+
       '<button class="btn btn-accent" onclick="openRouteNote(\''+d.id+'\')">Görüşme Notu</button>'+
       '<button class="btn btn-ghost" onclick="showVisitHistory(\''+d.id+'\')">Geçmiş Notlar</button>'+
