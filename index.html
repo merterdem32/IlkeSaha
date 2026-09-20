@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260920-5"/>
+  <link rel="stylesheet" href="/styles.css?v=20260920-6"/>
 </head>
 <body>
 <header>
@@ -28,6 +28,7 @@
     <button data-section="mapsec">Harita</button>
     <button data-section="route">Rut Planı</button>
     <button data-section="payments">Ödemeler</button>
+    <button data-section="meetings">Toplantı Notları</button>
     <button data-section="settings">Ayarlar</button>
   </nav>
   <main>
@@ -83,6 +84,35 @@
       </div>
     </section>
     <section id="payments" class="section"><div class="card"><div class="toolbar"><button class="btn btn-primary" onclick="openPaymentModal()">+ Ödeme Sözü Ekle</button></div><div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Tutar</th><th>Söz tarihi</th><th>Durum</th><th>Açıklama</th><th></th></tr></thead><tbody id="paymentRows"></tbody></table></div></div></section>
+    <section id="meetings" class="section">
+      <div class="grid">
+        <div class="card span-4">
+          <h3>Toplantıda Konuşulacaklar</h3>
+          <label>Başlık</label>
+          <input id="meetingTitle" placeholder="Örn. Fatih Sanayi rut problemi">
+          <label>Not</label>
+          <textarea id="meetingNote" placeholder="Toplantıda konuşmak istediğin konu, talep, problem, öneri..."></textarea>
+          <label>Toplantı tarihi (opsiyonel)</label>
+          <input id="meetingDate" type="date">
+          <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="saveMeetingNote()">+ Toplantı Notu Ekle</button>
+        </div>
+        <div class="card span-8">
+          <div class="toolbar" style="justify-content:space-between;align-items:center">
+            <div>
+              <h3 style="margin:0">Toplantı Notları</h3>
+              <div class="muted">Açık konuları toplantıda hızlıca görebilir, konuşulanları tamamlandı olarak işaretleyebilirsin.</div>
+            </div>
+            <select id="meetingFilter" style="max-width:180px" onchange="renderMeetingNotes()">
+              <option value="open">Açık Konular</option>
+              <option value="all">Tümü</option>
+              <option value="done">Tamamlananlar</option>
+            </select>
+          </div>
+          <div id="meetingNotesList" class="list"></div>
+        </div>
+      </div>
+    </section>
+
     <section id="settings" class="section">
       <div class="grid">
         <div class="card span-6">
@@ -99,6 +129,14 @@
     </section>
   </main>
 </div>
+<dialog id="historyDialog"><div class="modal">
+    <h3 id="historyTitle">Geçmiş Görüşme Notları</h3>
+    <div id="historyContent" class="list"></div>
+    <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost" onclick="historyDialog.close()">Kapat</button>
+    </div>
+  </div></dialog>
+
 <dialog id="cloudDialog"><div class="modal">
   <h3>Bulut Hesabı</h3>
   <div id="cloudSignedOutBox">
@@ -148,22 +186,22 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260920-5"></script>
-<script src="/seed-01.js?v=20260920-5"></script>
-<script src="/seed-02.js?v=20260920-5"></script>
-<script src="/seed-03.js?v=20260920-5"></script>
-<script src="/seed-04.js?v=20260920-5"></script>
-<script src="/seed-05.js?v=20260920-5"></script>
-<script src="/seed-06.js?v=20260920-5"></script>
-<script src="/seed-07.js?v=20260920-5"></script>
-<script src="/seed-08.js?v=20260920-5"></script>
-<script src="/seed-09.js?v=20260920-5"></script>
-<script src="/seed-10.js?v=20260920-5"></script>
-<script src="/seed-11.js?v=20260920-5"></script>
-<script src="/app-01.js?v=20260920-5"></script>
-<script src="/app-02.js?v=20260920-5"></script>
-<script src="/app-03.js?v=20260920-5"></script>
-<script src="/cloud.js?v=20260920-5"></script>
+<script src="/supabase-config.js?v=20260920-6"></script>
+<script src="/seed-01.js?v=20260920-6"></script>
+<script src="/seed-02.js?v=20260920-6"></script>
+<script src="/seed-03.js?v=20260920-6"></script>
+<script src="/seed-04.js?v=20260920-6"></script>
+<script src="/seed-05.js?v=20260920-6"></script>
+<script src="/seed-06.js?v=20260920-6"></script>
+<script src="/seed-07.js?v=20260920-6"></script>
+<script src="/seed-08.js?v=20260920-6"></script>
+<script src="/seed-09.js?v=20260920-6"></script>
+<script src="/seed-10.js?v=20260920-6"></script>
+<script src="/seed-11.js?v=20260920-6"></script>
+<script src="/app-01.js?v=20260920-6"></script>
+<script src="/app-02.js?v=20260920-6"></script>
+<script src="/app-03.js?v=20260920-6"></script>
+<script src="/cloud.js?v=20260920-6"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
