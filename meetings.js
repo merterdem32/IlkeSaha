@@ -33,6 +33,7 @@ function saveMeetingNote(){
   dateEl.value='';
 
   persist();
+  if(typeof logActivity==='function') logActivity('MEETING_NOTE_ADDED','MEETING_NOTE',state.meetingNotes[state.meetingNotes.length-1].id,{title:title||'Toplantı Notu'});
   renderMeetingNotes();
 }
 
@@ -41,6 +42,7 @@ function toggleMeetingNote(id){
   if(!item)return;
   item.status=item.status==='done'?'open':'done';
   persist();
+  if(typeof logActivity==='function' && item.status==='done') logActivity('MEETING_NOTE_DONE','MEETING_NOTE',id,{title:item.title});
   renderMeetingNotes();
 }
 
