@@ -83,6 +83,7 @@ function activateSection(sectionId){
   if(sectionId==='route') setTimeout(()=>{initRouteMap();routeMap.invalidateSize();renderRouteMap();},50);
   if(sectionId==='settings') setTimeout(()=>{initHomeMap();homeMap.invalidateSize();},50);
   if(sectionId==='management' && typeof renderManagementDashboard==='function') setTimeout(()=>renderManagementDashboard(),50);
+  if(sectionId==='dailyreport' && typeof prepareDailyReportControls==='function') setTimeout(()=>prepareDailyReportControls(),50);
 }
 
 function nav(){
@@ -95,7 +96,8 @@ function renderDashboard(){
   const myVisits=isField&&uid?state.visits.filter(v=>(v._actorUserId||v._ownerUserId||uid)===uid):state.visits;
   const myPayments=isField&&uid?state.payments.filter(p=>(p._actorUserId||p._ownerUserId||uid)===uid):state.payments;
 
-  kpiDealers.textContent=state.dealers.filter(d=>d.isActive!==false).length;
+  const visibleDealers=state.dealers.filter(d=>d.isActive!==false && (typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d)));
+  kpiDealers.textContent=visibleDealers.length;
   kpiVisits.textContent=myVisits.filter(v=>String(v.date||'').slice(0,10)===todayStr()).length;
   kpiPayments.textContent=myPayments.filter(p=>!['paid','cancelled'].includes(p.status)).length;
   kpiOverdue.textContent=myPayments.filter(p=>paymentStatus(p).text==='Gecikti').length;
@@ -115,11 +117,11 @@ function renderDealers(){
     ? (document.getElementById('managerDealerStaffFilter')?.value||'all')
     : 'all';
   const rows=state.dealers.filter(d=>{
+    if(typeof dealerVisibleToCurrentUser==='function'&&!dealerVisibleToCurrentUser(d))return false;
     const textOk=[d.name,d.contact,d.district,d.address].join(' ').toLowerCase().includes(q);
     if(!textOk)return false;
     if(managerFilter==='all')return true;
-    const lv=lastVisitForDealer(d.id);
-    return (lv?._actorUserId||lv?._ownerUserId)===managerFilter;
+    return d.assignedUserId===managerFilter;
   });
   dealerRows.innerHTML=rows.map(d=>{
     const lv=lastVisitForDealer(d.id);
@@ -128,6 +130,7 @@ function renderDealers(){
       '<td>'+esc(d.address||'-')+'</td>'+
       '<td><span class="badge '+(d.locationStatus==='verified'?'b-ok':d.locationStatus==='estimated'?'b-warn':'b-info')+'">'+(d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini':'Konum girilmedi')+'</span></td>'+
       '<td>'+(lv?new Date(lv.date).toLocaleDateString('tr-TR'):'-')+'</td>'+
+      '<td class="manager-only-col">'+esc(typeof salespersonLabel==='function'?salespersonLabel(d.assignedUserId):(d.assignedUserId||'Atanmamış'))+'</td>'+
       '<td class="manager-only-col">'+(lv?esc(actorDisplayName(lv)):'-')+'</td>'+
       '<td><button class="btn btn-ghost" onclick="showDealer(\''+d.id+'\')">Aç</button></td></tr>'
   }).join('');
@@ -144,15 +147,15 @@ function renderMap(){
   mainMarkers.forEach(m=>map.removeLayer(m)); mainMarkers=[];
   const home=L.marker([state.home.lat,state.home.lng]).addTo(map).bindPopup('<strong>Ev</strong>');
   mainMarkers.push(home);
-  state.dealers.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).forEach(d=>{
+  state.dealers.filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).forEach(d=>{
     const m=L.marker([d.lat,d.lng]).addTo(map).bindPopup('<strong>'+esc(d.name)+'</strong><br>'+esc(d.district||'')+'<br>'+(d.locationStatus==='verified'?'Doğrulandı':'Tahmini'));
     mainMarkers.push(m);
   });
-  const pts=[[state.home.lat,state.home.lng],...state.dealers.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).map(d=>[d.lat,d.lng])];
+  const pts=[[state.home.lat,state.home.lng],...state.dealers.filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).map(d=>[d.lat,d.lng])];
   if(pts.length>1)map.fitBounds(pts,{padding:[30,30]});
 }
 
-function openDealerModal(id){
+async function openDealerModal(id){
   const d=id?state.dealers.find(x=>x.id===id):null;
   dealerId.value=d?.id||'';
   dealerModalTitle.textContent=d?'Bayi Düzenle':'Bayi Ekle';
@@ -161,6 +164,7 @@ function openDealerModal(id){
   dealerLat.value=(d?.lat===null||d?.lat===undefined)?'':d.lat; dealerLng.value=(d?.lng===null||d?.lng===undefined)?'':d.lng;
   dealerLocationStatus.value=d?.locationStatus||'unset'; dealerFrequency.value=d?.frequency||14;
   dealerPriority.value=String(d?.priority||1); dealerGeneralNote.value=d?.generalNote||'';
+  if(typeof populateDealerAssigneeSelect==='function') await populateDealerAssigneeSelect(d?.assignedUserId||null);
   if(document.getElementById('dealerMapPaste')) dealerMapPaste.value='';
   if(document.getElementById('dealerMapPasteHint')) dealerMapPasteHint.textContent='Koordinatı veya içinde koordinat bulunan Google Maps linkini yapıştırabilirsin.';
   dealerDialog.showModal();
