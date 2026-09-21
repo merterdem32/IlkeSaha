@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260921-2"/>
+  <link rel="stylesheet" href="/styles.css?v=20260921-3"/>
 </head>
 <body>
 <header>
@@ -133,6 +133,22 @@
           <h3>Personel Durumu</h3>
           <div id="managerStaffList" class="list muted">Ekip altyapısı etkinleştirildikten sonra personeller burada görünecek.</div>
         </div>
+        <div class="card span-6" id="managerCreateUserForm">
+          <h3>Yeni Kullanıcı Oluştur</h3>
+          <div class="muted">Yönetici kullanıcı adı, şifre ve rolü belirler.</div>
+          <label>Kullanıcı adı</label>
+          <input id="newTeamUsername" placeholder="Örn. saha1 veya admin">
+          <label>Ad Soyad</label>
+          <input id="newTeamFullName" placeholder="Örn. Ahmet Yılmaz">
+          <label>Rol</label>
+          <select id="newTeamRole">
+            <option value="FIELD_STAFF">Saha Personeli</option>
+            <option value="MANAGER">Yönetici</option>
+          </select>
+          <label>Şifre</label>
+          <input id="newTeamPassword" type="password" autocomplete="new-password" placeholder="En az 8 karakter">
+          <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="managerCreateTeamUser()">Kullanıcı Oluştur</button>
+        </div>
         <div class="card span-6">
           <h3>Son Aktiviteler</h3>
           <div id="managerActivityList" class="list muted">Aktivite kaydı henüz etkin değil.</div>
@@ -168,7 +184,7 @@
   <h3>Bulut Hesabı</h3>
   <div id="cloudSignedOutBox">
     <div class="muted">Aynı e-posta hesabıyla telefon, bilgisayar ve farklı tarayıcılardan aynı verilere erişebilirsin.</div>
-    <label>E-posta</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="ornek@email.com">
+    <label>Kullanıcı adı</label><input id="cloudEmail" type="text" autocomplete="username" placeholder="Örn. saha1 veya admin">
     <label>Parola</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Parolan">
     <div class="toolbar" style="margin-top:14px">
       <button class="btn btn-primary" onclick="cloudSignIn()">Giriş Yap</button>
@@ -224,23 +240,23 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260921-2"></script>
-<script src="/seed-01.js?v=20260921-2"></script>
-<script src="/seed-02.js?v=20260921-2"></script>
-<script src="/seed-03.js?v=20260921-2"></script>
-<script src="/seed-04.js?v=20260921-2"></script>
-<script src="/seed-05.js?v=20260921-2"></script>
-<script src="/seed-06.js?v=20260921-2"></script>
-<script src="/seed-07.js?v=20260921-2"></script>
-<script src="/seed-08.js?v=20260921-2"></script>
-<script src="/seed-09.js?v=20260921-2"></script>
-<script src="/seed-10.js?v=20260921-2"></script>
-<script src="/seed-11.js?v=20260921-2"></script>
-<script src="/app-01.js?v=20260921-2"></script>
-<script src="/app-02.js?v=20260921-2"></script>
-<script src="/app-03.js?v=20260921-2"></script>
-<script src="/meetings.js?v=20260921-2"></script>
-<script src="/cloud.js?v=20260921-2"></script>
+<script src="/supabase-config.js?v=20260921-3"></script>
+<script src="/seed-01.js?v=20260921-3"></script>
+<script src="/seed-02.js?v=20260921-3"></script>
+<script src="/seed-03.js?v=20260921-3"></script>
+<script src="/seed-04.js?v=20260921-3"></script>
+<script src="/seed-05.js?v=20260921-3"></script>
+<script src="/seed-06.js?v=20260921-3"></script>
+<script src="/seed-07.js?v=20260921-3"></script>
+<script src="/seed-08.js?v=20260921-3"></script>
+<script src="/seed-09.js?v=20260921-3"></script>
+<script src="/seed-10.js?v=20260921-3"></script>
+<script src="/seed-11.js?v=20260921-3"></script>
+<script src="/app-01.js?v=20260921-3"></script>
+<script src="/app-02.js?v=20260921-3"></script>
+<script src="/app-03.js?v=20260921-3"></script>
+<script src="/meetings.js?v=20260921-3"></script>
+<script src="/cloud.js?v=20260921-3"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
