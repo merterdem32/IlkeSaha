@@ -269,9 +269,11 @@ async function loadManagerRoute(){
   const p=managerDirectoryCache.profiles.get(staffId)||{};
   const staffName=p.full_name||p.username||'Personel';
 
+  const completed=managerCurrentRouteStops.filter(s=>visitedDealerIds.has(s.dealer_id)).length;
   summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+routeDate+
     ' • <strong>'+managerCurrentRouteStops.length+' bayi</strong>'+
-    ' • '+managerCurrentRouteStops.filter(s=>visitedDealerIds.has(s.dealer_id)).length+' ziyaret kaydı';
+    ' • <strong>'+completed+'/'+managerCurrentRouteStops.length+'</strong> ziyaret tamamlandı'+
+    ' • <span class="muted">son kontrol '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+'</span>';
 
   list.innerHTML=managerCurrentRouteStops.length?managerCurrentRouteStops.map((s,i)=>{
     const d=state.dealers.find(x=>x.id===s.dealer_id);
@@ -377,3 +379,17 @@ async function managerMoveRouteStop(index,delta){
     await loadManagerRoute();
   }catch(err){alert('Rut sırası güncellenemedi: '+(err.message||err))}
 }
+
+
+let managerRouteAutoRefreshTimer=null;
+
+function startManagerRouteAutoRefresh(){
+  if(managerRouteAutoRefreshTimer) clearInterval(managerRouteAutoRefreshTimer);
+  managerRouteAutoRefreshTimer=setInterval(()=>{
+    if(teamContext?.role!=='MANAGER')return;
+    const section=document.getElementById('management');
+    if(section?.classList.contains('active')) loadManagerRoute();
+  },30000);
+}
+
+document.addEventListener('DOMContentLoaded',()=>startManagerRouteAutoRefresh());
