@@ -718,6 +718,10 @@ async function migrateCurrentUserToSaha1(){
 }
 
 
+function routeSignature(ids){
+  return (ids||[]).filter(Boolean).join('|');
+}
+
 async function publishTodayRoute(){
   if(!cloudUser||!supabaseClient||teamContext.role!=='FIELD_STAFF'){
     alert('Bu işlem saha personeli hesabında kullanılabilir.');
@@ -753,7 +757,9 @@ async function publishTodayRoute(){
     if(insErr) throw insErr;
 
     const status=document.getElementById('routePublishStatus');
-    if(status) status.textContent='Yöneticiyle paylaşıldı • '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+    const sharedAt=new Date();
+    localStorage.setItem('ilkeSahaPublishedRoute:'+cloudUser.id+':'+routeDate,routeSignature(state.todayRoute));
+    if(status) status.textContent='Yöneticiyle paylaşıldı • '+sharedAt.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
     if(typeof logActivity==='function') await logActivity('ROUTE_PUBLISHED','ROUTE',route.id,{count:rows.length,date:routeDate});
     alert('Bugünkü rut yöneticiyle paylaşıldı.');
   }catch(err){
@@ -786,6 +792,7 @@ async function loadPersonalDailyRouteFromCloud(){
     if(stopsErr)return;
 
     state.todayRoute=(stops||[]).map(s=>s.dealer_id);
+    localStorage.setItem('ilkeSahaPublishedRoute:'+cloudUser.id+':'+routeDate,routeSignature(state.todayRoute));
     if(status) status.textContent='Bugünkü paylaşılmış rut yüklendi.';
   }catch(err){
     console.warn('Daily route load skipped',err);
