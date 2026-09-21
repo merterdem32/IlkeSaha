@@ -69,6 +69,13 @@ function renderPayments(){
 
 function markPaid(id){const p=state.payments.find(x=>x.id===id);if(p){p.status='paid';p.paidAt=new Date().toISOString();persist();if(typeof logActivity==='function') logActivity('PAYMENT_PAID','DEALER',p.dealerId,{paymentId:p.id})}}
 
+function markRouteDraftChanged(){
+  const el=document.getElementById('routePublishStatus');
+  if(el && state.todayRoute?.length){
+    el.textContent='Bugünkü rut taslak durumda. Son değişiklikleri yöneticiye göndermek için tekrar onayla.';
+  }
+}
+
 function loadOriginalPlan(){
   const week=planWeek.value, day=planDay.value;
   const planned=state.dealers
@@ -77,6 +84,7 @@ function loadOriginalPlan(){
   if(!planned.length){alert('Bu hafta/gün için aktif bayi kaydı bulunamadı.');return}
   state.todayRoute=planned.map(d=>d.id);
   persist();
+  markRouteDraftChanged();
   const missing=planned.filter(d=>d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng)).length;
   routeSummary.innerHTML='Gönderdiğin plan yüklendi: <strong>'+planned.length+' bayi</strong>. '+
     (missing?'<span class="badge b-warn">'+missing+' bayinin konumu henüz işaretlenmedi</span>':'');
@@ -198,6 +206,7 @@ function buildRoute(){
 
   state.todayRoute=finalRoute.map(d=>d.id);
   persist();
+  markRouteDraftChanged();
 
   if(missing.length){
     alert('Rut '+finalRoute.length+' bayinin tamamını içeriyor. '+missing.length+
@@ -213,6 +222,7 @@ function deactivateDealerFromRoute(id){
   d.isActive=false;
   state.todayRoute=(state.todayRoute||[]).filter(x=>x!==id);
   persist();
+  markRouteDraftChanged();
   if(typeof logActivity==='function') logActivity('VISIT_MARKED','DEALER',id,{});
 }
 
