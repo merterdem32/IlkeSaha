@@ -50,7 +50,8 @@ function openVisitModal(id){
 function saveVisit(){
   state.visits.push({id:crypto.randomUUID(),dealerId:visitDealerId.value,date:visitDate.value||dtLocalNow(),note:visitNote.value.trim(),followUp:visitFollowUp.value,
     _ownerUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
-    _actorUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null});
+    _actorUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
+    createdAt:new Date().toISOString()});
   visitDialog.close(); persist(); if(typeof logActivity==='function') logActivity('VISIT_ADDED','DEALER',visitDealerId.value,{note:visitNote.value.trim()});
 }
 
