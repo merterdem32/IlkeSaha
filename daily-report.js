@@ -57,10 +57,27 @@ async function loadDailyReport(){
     pq=pq.eq('actor_user_id',staffId);
   }
 
-  const [vRes,pRes]=await Promise.all([vq,pq]);
-  if(vRes.error||pRes.error){
-    summary.textContent='Rapor yüklenemedi: '+(vRes.error?.message||pRes.error?.message);
+  let [vRes,pRes]=await Promise.all([vq,pq]);
+  if(vRes.error){
+    summary.textContent='Ziyaretler yüklenemedi: '+vRes.error.message;
     return;
+  }
+
+  let paymentFallback=false;
+  if(pRes.error){
+    console.warn('Payment report query fallback',pRes.error);
+    let fallbackQ=supabaseClient.from('payment_promises')
+      .select('id,user_id,actor_user_id,dealer_id,amount,promise_date,status,note,updated_at')
+      .eq('organization_id',teamContext.organizationId)
+      .eq('promise_date',date);
+    if(staffId!=='all') fallbackQ=fallbackQ.eq('actor_user_id',staffId);
+    const fallback=await fallbackQ;
+    if(fallback.error){
+      pRes={data:[],error:null};
+    }else{
+      pRes=fallback;
+      paymentFallback=true;
+    }
   }
 
   const visits=vRes.data||[];
@@ -164,7 +181,8 @@ async function loadDailyReport(){
   };
 
   preview.innerHTML=html;
-  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+esc(dateLabel)+' • '+entries.length+' bayi ziyareti • '+payments.length+' ödeme sözü';
+  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+esc(dateLabel)+' • '+entries.length+' bayi ziyareti • '+payments.length+' ödeme sözü'+
+    (paymentFallback?' • <span class="badge b-warn">Ödemeler geçici olarak söz tarihine göre gösteriliyor</span>':'');
 }
 
 async function downloadDailyReportPdf(){
