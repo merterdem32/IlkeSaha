@@ -520,6 +520,8 @@ async function loadStateFromCloud(){
       if(document.getElementById('preferHomeFinish')) preferHomeFinish.checked=s.prefer_home_finish!==false;
     }
 
+    await seedLegacyRecurringRoutesForCurrentUser();
+    await materializeDailyRouteFromRecurring(cloudUser.id,todayStr());
     await loadPersonalDailyRouteFromCloud();
     localStorage.setItem(storeKey,JSON.stringify(state));
     renderAll();
@@ -773,4 +775,114 @@ async function loadPersonalDailyRouteFromCloud(){
   }catch(err){
     console.warn('Daily route load skipped',err);
   }
+}
+
+
+const ILKE_ROUTE_CYCLE_ANCHOR='2026-09-21'; // 1. HAFTA PAZARTESİ
+
+function getRouteCycleForDate(dateStr){
+  const anchor=new Date(ILKE_ROUTE_CYCLE_ANCHOR+'T12:00:00');
+  const target=new Date(dateStr+'T12:00:00');
+  const diffDays=Math.floor((target-anchor)/86400000);
+  const normalized=((diffDays%14)+14)%14;
+  const cycleWeek=normalized<7?1:2;
+  const weekday=(normalized%7)+1; // 1=Pzt ... 7=Paz
+  return {cycleWeek,weekday};
+}
+
+async function seedLegacyRecurringRoutesForCurrentUser(){
+  if(!cloudUser||!supabaseClient||teamContext.role!=='FIELD_STAFF')return;
+  try{
+    const profile=teamProfilesById.get(cloudUser.id)||{};
+    if((profile.username||'').toLowerCase()!=='saha1')return;
+
+    const {count,error}=await supabaseClient
+      .from('recurring_routes')
+      .select('id',{count:'exact',head:true})
+      .eq('organization_id',teamContext.organizationId)
+      .eq('assigned_user_id',cloudUser.id);
+    if(error||count>0)return;
+
+    const dayMap={PAZARTESİ:1,SALI:2,ÇARŞAMBA:3,PERŞEMBE:4,CUMA:5,CUMARTESİ:6};
+    const weekMap={'1. HAFTA':1,'2. HAFTA':2};
+
+    for(const cycleWeek of [1,2]){
+      for(const [dayName,weekday] of Object.entries(dayMap)){
+        const dealers=state.dealers
+          .filter(d=>weekMap[d.plannedWeek]===cycleWeek && d.plannedDay===dayName && d.isActive!==false)
+          .sort((a,b)=>(a.plannedOrder||999)-(b.plannedOrder||999));
+        if(!dealers.length)continue;
+
+        const {data:route,error:routeErr}=await supabaseClient.from('recurring_routes').insert({
+          organization_id:teamContext.organizationId,
+          assigned_user_id:cloudUser.id,
+          cycle_week:cycleWeek,
+          weekday,
+          title:cycleWeek+'. HAFTA '+dayName,
+          created_by:cloudUser.id,
+          updated_by:cloudUser.id
+        }).select('id').single();
+        if(routeErr)throw routeErr;
+
+        const rows=dealers.map((d,i)=>({
+          recurring_route_id:route.id,
+          dealer_id:d.id,
+          stop_order:i+1
+        }));
+        const {error:stopErr}=await supabaseClient.from('recurring_route_stops').insert(rows);
+        if(stopErr)throw stopErr;
+      }
+    }
+  }catch(err){
+    console.warn('Recurring route legacy seed skipped',err);
+  }
+}
+
+async function materializeDailyRouteFromRecurring(userId,dateStr){
+  if(!userId||!dateStr)return null;
+  const {cycleWeek,weekday}=getRouteCycleForDate(dateStr);
+  if(weekday>6)return null;
+
+  const {data:template,error}=await supabaseClient.from('recurring_routes')
+    .select('id')
+    .eq('organization_id',teamContext.organizationId)
+    .eq('assigned_user_id',userId)
+    .eq('cycle_week',cycleWeek)
+    .eq('weekday',weekday)
+    .eq('is_active',true)
+    .maybeSingle();
+  if(error||!template)return null;
+
+  const {data:stops,error:stopErr}=await supabaseClient.from('recurring_route_stops')
+    .select('dealer_id,stop_order')
+    .eq('recurring_route_id',template.id)
+    .order('stop_order');
+  if(stopErr)throw stopErr;
+
+  const {data:daily,error:dailyErr}=await supabaseClient.from('daily_routes').upsert({
+    organization_id:teamContext.organizationId,
+    assigned_user_id:userId,
+    route_date:dateStr,
+    status:'PLANNED',
+    created_by:cloudUser?.id||userId,
+    updated_by:cloudUser?.id||userId,
+    updated_at:new Date().toISOString()
+  },{onConflict:'organization_id,assigned_user_id,route_date'}).select('id').single();
+  if(dailyErr)throw dailyErr;
+
+  const {count}=await supabaseClient.from('route_stops')
+    .select('id',{count:'exact',head:true})
+    .eq('route_id',daily.id);
+
+  if((count||0)===0 && (stops||[]).length){
+    const rows=stops.map((s,i)=>({
+      route_id:daily.id,
+      dealer_id:s.dealer_id,
+      stop_order:i+1
+    }));
+    const {error:insErr}=await supabaseClient.from('route_stops').insert(rows);
+    if(insErr)throw insErr;
+  }
+
+  return daily.id;
 }
