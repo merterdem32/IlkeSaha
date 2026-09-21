@@ -628,29 +628,40 @@ async function migrateCurrentUserToSaha1(){
 
   if(!confirm('Mevcut saha verilerin saha1 hesabına taşınacak. İşlem öncesi bulut yedeği alınacak ve eski hesabın silinmeyecek. Devam edilsin mi?')) return;
 
-  const {data,error}=await supabaseClient.functions.invoke('migrate-current-user-to-saha1',{
-    body:{password,fullName:'Mert'}
-  });
+  let data=null;
+  try{
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    const token=session?.access_token;
+    if(!token) throw new Error('Aktif oturum bulunamadı.');
 
-  if(error){
-    let detail=error.message||String(error);
-    try{
-      if(error.context){
-        const raw=await error.context.text();
-        if(raw){
-          try{
-            const parsed=JSON.parse(raw);
-            detail=parsed.error||parsed.message||raw;
-          }catch{
-            detail=raw;
-          }
-        }
-      }
-    }catch(_){}
-    console.error('saha1 migration error',error,detail);
-    alert('Taşıma başarısız: '+detail);
+    const endpoint=window.ILKE_SUPABASE.url+'/functions/v1/migrate-current-user-to-saha1';
+    const res=await fetch(endpoint,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+token,
+        'apikey':window.ILKE_SUPABASE.publishableKey
+      },
+      body:JSON.stringify({password,fullName:'Mert'})
+    });
+
+    const raw=await res.text();
+    let parsed=null;
+    try{ parsed=raw?JSON.parse(raw):null; }catch(_){}
+
+    if(!res.ok){
+      const message=parsed?.error||parsed?.message||raw||('HTTP '+res.status);
+      throw new Error('HTTP '+res.status+' - '+message);
+    }
+
+    data=parsed||{};
+  }catch(error){
+    console.error('saha1 migration request failed',error);
+    alert('Taşıma başarısız: '+(error.message||String(error))+
+      '\n\nEğer "Failed to fetch" veya bağlantı hatası görüyorsan Supabase Edge Functions içinde migrate-current-user-to-saha1 fonksiyonunun gerçekten Deploy edildiğini ve Verify JWT with legacy secret ayarının kapalı olduğunu kontrol et.');
     return;
   }
+
   if(!data?.ok){
     alert('Taşıma başarısız: '+(data?.error||'Bilinmeyen hata'));
     return;
