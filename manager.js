@@ -15,7 +15,7 @@ async function renderManagementDashboard(){
       supabaseClient.from('visits')
         .select('id,user_id,actor_user_id,dealer_id,visit_date,note,follow_up')
         .eq('organization_id',orgId)
-        .gte('visit_date',today+'T00:00:00')
+        .gte('visit_date',new Date(new Date(today+'T00:00:00').getTime()-6*86400000).toISOString())
         .lt('visit_date',new Date(new Date(today+'T00:00:00').getTime()+86400000).toISOString()),
       supabaseClient.from('payment_promises')
         .select('id,user_id,actor_user_id,dealer_id,amount,promise_date,status,note')
@@ -34,6 +34,7 @@ async function renderManagementDashboard(){
     const profiles=new Map((profilesRes.data||[]).map(p=>[p.user_id,p]));
     const members=membersRes.data||[];
     const visits=visitsRes.data||[];
+    const todayVisits=visits.filter(v=>String(v.visit_date||'').slice(0,10)===today);
     const payments=paymentsRes.data||[];
     const activity=activityRes.data||[];
 
@@ -47,7 +48,7 @@ async function renderManagementDashboard(){
     const overdueCount=document.getElementById('mgrOverdueCount');
 
     if(staffCount) staffCount.textContent=fieldStaff.length;
-    if(visitCount) visitCount.textContent=visits.length;
+    if(visitCount) visitCount.textContent=todayVisits.length;
     if(paymentCount) paymentCount.textContent=pending.length;
     if(overdueCount) overdueCount.textContent=overdue.length;
 
@@ -55,7 +56,7 @@ async function renderManagementDashboard(){
     if(staffList){
       staffList.innerHTML=members.length?members.map(m=>{
         const p=profiles.get(m.user_id)||{};
-        const personVisits=visits.filter(v=>(v.actor_user_id||v.user_id)===m.user_id);
+        const personVisits=todayVisits.filter(v=>(v.actor_user_id||v.user_id)===m.user_id);
         const name=p.full_name||p.username||p.email||'Kullanıcı';
         return '<div class="item">'+
           '<div class="toolbar" style="justify-content:space-between;align-items:center;margin:0">'+
@@ -67,6 +68,38 @@ async function renderManagementDashboard(){
           '<div class="toolbar" style="margin:10px 0 0"><button class="btn btn-ghost" onclick="openTeamUserEditor(\''+m.user_id+'\')">Kullanıcıyı Düzenle</button></div>'+
         '</div>';
       }).join(''):'<div class="muted">Aktif ekip üyesi yok.</div>';
+    }
+
+    const perfList=document.getElementById('managerPerformanceList');
+    if(perfList){
+      const sevenDayStart=new Date(new Date(today+'T00:00:00').getTime()-6*86400000);
+      const rows=fieldStaff.map(m=>{
+        const p=profiles.get(m.user_id)||{};
+        const who=p.full_name||p.username||p.email||'Personel';
+        const username=p.username||'';
+        const personToday=todayVisits.filter(v=>(v.actor_user_id||v.user_id)===m.user_id);
+        const person7=visits.filter(v=>(v.actor_user_id||v.user_id)===m.user_id && new Date(v.visit_date)>=sevenDayStart);
+        const personPending=pending.filter(x=>(x.actor_user_id||x.user_id)===m.user_id);
+        const personOverdue=personPending.filter(x=>x.promise_date<today);
+        const last=activity.find(a=>a.actor_user_id===m.user_id);
+
+        return '<div class="item">'+
+          '<div class="toolbar" style="justify-content:space-between;align-items:flex-start;margin:0">'+
+            '<div><strong>'+esc(who)+'</strong>'+(username?'<span class="muted">'+esc(username)+'</span>':'')+'</div>'+
+            '<button class="btn btn-ghost" onclick="managerFocusStaffRoute(\''+m.user_id+'\')">Rutunu Aç</button>'+
+          '</div>'+
+          '<div class="toolbar" style="margin:10px 0 0;gap:8px;flex-wrap:wrap">'+
+            '<span class="badge b-ok">Bugün '+personToday.length+' ziyaret</span>'+
+            '<span class="badge b-info">7 gün '+person7.length+' ziyaret</span>'+
+            '<span class="badge '+(personPending.length?'b-warn':'b-info')+'">'+personPending.length+' bekleyen ödeme</span>'+
+            (personOverdue.length?'<span class="badge b-bad">'+personOverdue.length+' geciken</span>':'')+
+          '</div>'+
+          '<div class="muted" style="margin-top:8px">'+
+            (last?'Son aktivite: '+new Date(last.created_at).toLocaleString('tr-TR'):'Henüz aktivite yok')+
+          '</div>'+
+        '</div>';
+      });
+      perfList.innerHTML=rows.length?rows.join(''):'<div class="muted">Aktif saha personeli yok.</div>';
     }
 
     setTimeout(()=>prepareManagerRouteControls(),0);
@@ -393,3 +426,17 @@ function startManagerRouteAutoRefresh(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>startManagerRouteAutoRefresh());
+
+
+async function managerFocusStaffRoute(userId){
+  const sel=document.getElementById('managerRouteStaff');
+  const dateEl=document.getElementById('managerRouteDate');
+  if(!sel||!dateEl)return;
+  if(!dateEl.value) dateEl.value=todayStr();
+  if(![...sel.options].some(o=>o.value===userId)){
+    await prepareManagerRouteControls();
+  }
+  sel.value=userId;
+  await loadManagerRoute();
+  document.getElementById('managerRouteSummary')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
