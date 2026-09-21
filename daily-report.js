@@ -8,17 +8,30 @@ async function prepareDailyReportControls(){
 
   if(!dateEl.value)dateEl.value=todayStr();
 
+  const wrap=document.getElementById('dailyReportStaffWrap');
+  const help=document.getElementById('dailyReportHelp');
+
   if(teamContext?.role==='MANAGER'){
+    if(wrap)wrap.style.display='';
     staffEl.style.display='';
+    if(help)help.textContent='Gün sonu raporunu görmek istediğin saha personelini ve tarihi seç.';
     if(typeof loadManagerDirectory==='function')await loadManagerDirectory();
+
     const staff=activeFieldStaffDirectory();
     const current=staffEl.value;
-    staffEl.innerHTML='<option value="all">Tüm saha personeli</option>'+staff.map(s=>{
+    staffEl.innerHTML='<option value="">Personel seç</option>'+staff.map(s=>{
       const label=s.fullName||s.username||s.email||s.userId;
       return '<option value="'+esc(s.userId)+'">'+esc(label)+(s.username?' ('+esc(s.username)+')':'')+'</option>';
     }).join('');
-    if(current&&[...staffEl.options].some(o=>o.value===current))staffEl.value=current;
+
+    if(current&&[...staffEl.options].some(o=>o.value===current)){
+      staffEl.value=current;
+    }else if(staff.length){
+      staffEl.value=staff[0].userId;
+    }
   }else{
+    if(wrap)wrap.style.display='none';
+    if(help)help.textContent='Bugünkü kendi saha raporunu PDF veya WhatsApp mesajı olarak hazırlayabilirsin.';
     staffEl.innerHTML='<option value="'+esc(cloudUser.id)+'">Benim raporum</option>';
     staffEl.value=cloudUser.id;
     staffEl.style.display='none';
@@ -31,10 +44,16 @@ async function loadDailyReport(){
   if(!cloudUser||!supabaseClient)return;
   const date=document.getElementById('dailyReportDate')?.value||todayStr();
   const staffId=document.getElementById('dailyReportStaff')?.value||
-    (teamContext?.role==='FIELD_STAFF'?cloudUser.id:'all');
+    (teamContext?.role==='FIELD_STAFF'?cloudUser.id:'');
   const preview=document.getElementById('dailyReportPreview');
   const summary=document.getElementById('dailyReportSummary');
   if(!preview||!summary)return;
+
+  if(teamContext?.role==='MANAGER' && !staffId){
+    summary.textContent='Personel seçmeden rapor oluşturulamaz.';
+    preview.innerHTML='<div class="muted">Yukarıdan saha personelini seç.</div>';
+    return;
+  }
 
   summary.textContent='Rapor hazırlanıyor…';
   preview.innerHTML='';
@@ -52,10 +71,8 @@ async function loadDailyReport(){
     .eq('organization_id',teamContext.organizationId)
     .gte('created_at',start).lt('created_at',end);
 
-  if(staffId!=='all'){
-    vq=vq.eq('actor_user_id',staffId);
-    pq=pq.eq('actor_user_id',staffId);
-  }
+  vq=vq.eq('actor_user_id',staffId);
+  pq=pq.eq('actor_user_id',staffId);
 
   let [vRes,pRes]=await Promise.all([vq,pq]);
   if(vRes.error){
@@ -70,7 +87,7 @@ async function loadDailyReport(){
       .select('id,user_id,actor_user_id,dealer_id,amount,promise_date,status,note,updated_at')
       .eq('organization_id',teamContext.organizationId)
       .eq('promise_date',date);
-    if(staffId!=='all') fallbackQ=fallbackQ.eq('actor_user_id',staffId);
+    fallbackQ=fallbackQ.eq('actor_user_id',staffId);
     const fallback=await fallbackQ;
     if(fallback.error){
       pRes={data:[],error:null};
@@ -99,9 +116,7 @@ async function loadDailyReport(){
     return ta-tb;
   });
 
-  const staffName=staffId==='all'
-    ? 'Tüm Saha Ekibi'
-    : salespersonLabel(staffId);
+  const staffName=salespersonLabel(staffId);
   const dateLabel=new Date(date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
   const totalAmount=payments.reduce((s,p)=>s+Number(p.amount||0),0);
 
