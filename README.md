@@ -24,3 +24,14 @@ Build Command ve Output Directory boş bırakılabilir.
 3. Gerçek yol ağı / sürüş süresi API'si
 4. Trafik destekli rut optimizasyonu
 5. Bildirim ve ödeme hatırlatma sistemi
+
+
+## Çok Kullanıcılı Ekip Geçişi
+
+Yeni yönetim paneli altyapısı güvenli ve kademeli taşınır.
+
+1. Önce `supabase-team-migration.sql` Supabase SQL Editor'da çalıştırılır.
+2. Script mevcut `dealers`, `visits`, `payment_promises`, `meeting_notes` ve `user_settings` tablolarının sabit legacy yedeklerini oluşturur.
+3. Mevcut owner RLS politikaları ilk aşamada kaldırılmaz; bugünkü çalışan saha uygulaması etkilenmez.
+4. Sonraki sürüm organizasyon ve rol bağlamını etkinleştirir; eski veriler silinmeden İlke Akü organizasyonuna bağlanır.
+5. MANAGER rolü Yönetim menüsünü görür; FIELD_STAFF mevcut saha ekranlarını kullanır.
