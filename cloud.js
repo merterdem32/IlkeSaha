@@ -25,16 +25,50 @@ function updateCloudUi(message){
 }
 
 function applyRoleUi(){
-  const nav=document.getElementById('managementNavBtn');
-  if(nav) nav.style.display=teamContext.role==='MANAGER'?'':'none';
+  const isManager=teamContext.role==='MANAGER';
+  const isField=teamContext.role==='FIELD_STAFF';
+
+  const dashboardNav=document.getElementById('dashboardNavBtn');
+  const routeNav=document.getElementById('routeNavBtn');
+  const managementNav=document.getElementById('managementNavBtn');
+  const settingsNav=document.getElementById('settingsNavBtn');
+
+  if(dashboardNav) dashboardNav.style.display=isManager?'none':'';
+  if(routeNav) routeNav.style.display=isManager?'none':'';
+  if(settingsNav) settingsNav.style.display=isManager?'none':'';
+  if(managementNav) managementNav.style.display=isManager?'':'none';
+
   const badge=document.getElementById('managementRoleBadge');
   if(badge) badge.textContent=teamContext.role||'';
+
   const email=document.getElementById('cloudSignedInEmail');
   if(email && cloudUser){
-    email.textContent=(cloudUser.email||'')+(teamContext.organizationName?' • '+teamContext.organizationName:'')+(teamContext.role?' • '+teamContext.role:'');
+    const label=teamProfilesById.get(cloudUser.id)?.full_name ||
+      teamProfilesById.get(cloudUser.id)?.username ||
+      cloudUser.email || '';
+    email.textContent=label+(teamContext.organizationName?' • '+teamContext.organizationName:'')+(teamContext.role?' • '+teamContext.role:'');
   }
+
   const join=document.getElementById('teamJoinCode');
   if(join) join.textContent=teamContext.joinCode||'-';
+
+  // Manager never lands on a field employee's personal dashboard/route/settings.
+  if(isManager){
+    const active=document.querySelector('.section.active');
+    if(!active || ['dashboard','route','settings'].includes(active.id)){
+      if(typeof activateSection==='function') activateSection('management');
+    }
+  }else if(isField){
+    const active=document.querySelector('.section.active');
+    if(active?.id==='management' || !active){
+      if(typeof activateSection==='function') activateSection('dashboard');
+    }
+  }
+
+  if(cloudUser && teamContext.organizationId){
+    setTimeout(()=>refreshBootstrapAdminBox(),0);
+    setTimeout(()=>refreshSaha1MigrationBox(),0);
+  }
 }
 
 async function initCloud(){
@@ -486,7 +520,11 @@ async function loadStateFromCloud(){
 
     localStorage.setItem(storeKey,JSON.stringify(state));
     renderAll();
-    if(typeof renderManagementDashboard==='function') await renderManagementDashboard();
+    applyRoleUi();
+    if(teamContext.role==='MANAGER' && typeof renderManagementDashboard==='function'){
+      await renderManagementDashboard();
+      if(typeof activateSection==='function') activateSection('management');
+    }
     updateCloudUi('Ekip verileri yüklendi • '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}));
   }catch(err){
     console.error('Cloud load error',err);
