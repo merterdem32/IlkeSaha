@@ -241,9 +241,21 @@ async function loadManagerRoute(){
   managerCurrentRouteId=route?.id||null;
 
   if(!route){
+    try{
+      const createdId=await materializeDailyRouteFromRecurring(staffId,routeDate);
+      if(createdId){
+        managerCurrentRouteId=createdId;
+        return await loadManagerRoute();
+      }
+    }catch(err){
+      console.warn('Recurring route materialization failed',err);
+    }
+
     managerCurrentRouteStops=[];
-    summary.innerHTML='<span class="badge b-warn">Bu tarih için kayıtlı rut yok.</span>';
-    list.innerHTML='<div class="muted">Aşağıdan bayi ekleyerek bu personel için yeni rut oluşturabilirsin.</div>';
+    const cycle=getRouteCycleForDate(routeDate);
+    summary.innerHTML='<span class="badge b-warn">Bu tarih için rut yok.</span> '+
+      '<span class="muted">'+cycle.cycleWeek+'. hafta / '+cycle.weekday+'. gün için sabit rut şablonu bulunamadı.</span>';
+    list.innerHTML='<div class="muted">Bu personel için önce sabit haftalık rut tanımlanmalı veya aşağıdan bayi eklenebilir.</div>';
     return;
   }
 
@@ -268,7 +280,9 @@ async function loadManagerRoute(){
   const p=managerDirectoryCache.profiles.get(staffId)||{};
   const staffName=p.full_name||p.username||'Personel';
 
-  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+routeDate+
+  const cycle=getRouteCycleForDate(routeDate);
+  const cycleLabel=cycle.weekday<=6 ? cycle.cycleWeek+'. HAFTA • '+['','PAZARTESİ','SALI','ÇARŞAMBA','PERŞEMBE','CUMA','CUMARTESİ'][cycle.weekday] : 'PAZAR';
+  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+routeDate+' • '+cycleLabel+
     ' • <strong>'+managerCurrentRouteStops.length+' bayi</strong>'+
     ' • '+managerCurrentRouteStops.filter(s=>visitedDealerIds.has(s.dealer_id)).length+' ziyaret kaydı';
 
