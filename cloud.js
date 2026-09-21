@@ -38,6 +38,10 @@ function applyRoleUi(){
   if(settingsNav) settingsNav.style.display=isManager?'none':'';
   if(managementNav) managementNav.style.display=isManager?'':'none';
 
+  document.querySelectorAll('.manager-only-col').forEach(el=>{
+    el.style.display=isManager?'':'none';
+  });
+
   const badge=document.getElementById('managementRoleBadge');
   if(badge) badge.textContent=teamContext.role||'';
 
