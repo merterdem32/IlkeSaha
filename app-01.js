@@ -62,27 +62,40 @@ function paymentStatus(p){
   return {text:'Bekliyor',cls:'b-info'};
 }
 
+function activateSection(sectionId){
+  const btn=document.querySelector('nav button[data-section="'+sectionId+'"]');
+  const section=document.getElementById(sectionId);
+  if(!btn||!section||btn.style.display==='none')return;
+
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  section.classList.add('active');
+
+  if(sectionId==='mapsec') setTimeout(()=>{initMap();map.invalidateSize();renderMap();},50);
+  if(sectionId==='route') setTimeout(()=>{initRouteMap();routeMap.invalidateSize();renderRouteMap();},50);
+  if(sectionId==='settings') setTimeout(()=>{initHomeMap();homeMap.invalidateSize();},50);
+  if(sectionId==='management' && typeof renderManagementDashboard==='function') setTimeout(()=>renderManagementDashboard(),50);
+}
+
 function nav(){
-  document.querySelectorAll('nav button').forEach(btn=>btn.onclick=()=>{
-    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.section).classList.add('active');
-    if(btn.dataset.section==='mapsec') setTimeout(()=>{initMap();map.invalidateSize();renderMap();},50);
-    if(btn.dataset.section==='route') setTimeout(()=>{initRouteMap();routeMap.invalidateSize();renderRouteMap();},50);
-    if(btn.dataset.section==='settings') setTimeout(()=>{initHomeMap();homeMap.invalidateSize();},50);
-  });
+  document.querySelectorAll('nav button').forEach(btn=>btn.onclick=()=>activateSection(btn.dataset.section));
 }
 
 function renderDashboard(){
-  kpiDealers.textContent=state.dealers.length;
-  kpiVisits.textContent=state.visits.filter(v=>v.date.slice(0,10)===todayStr()).length;
-  kpiPayments.textContent=state.payments.filter(p=>!['paid','cancelled'].includes(p.status)).length;
-  kpiOverdue.textContent=state.payments.filter(p=>paymentStatus(p).text==='Gecikti').length;
+  const uid=(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null;
+  const isField=typeof teamContext!=='undefined'&&teamContext?.role==='FIELD_STAFF';
+  const myVisits=isField&&uid?state.visits.filter(v=>(v._actorUserId||v._ownerUserId||uid)===uid):state.visits;
+  const myPayments=isField&&uid?state.payments.filter(p=>(p._actorUserId||p._ownerUserId||uid)===uid):state.payments;
+
+  kpiDealers.textContent=state.dealers.filter(d=>d.isActive!==false).length;
+  kpiVisits.textContent=myVisits.filter(v=>String(v.date||'').slice(0,10)===todayStr()).length;
+  kpiPayments.textContent=myPayments.filter(p=>!['paid','cancelled'].includes(p.status)).length;
+  kpiOverdue.textContent=myPayments.filter(p=>paymentStatus(p).text==='Gecikti').length;
   todayRoute.innerHTML=state.todayRoute.length?state.todayRoute.map((id,i)=>{
     const d=state.dealers.find(x=>x.id===id); return d?'<div class="item">'+(i+1)+'. <strong>'+esc(d.name)+'</strong><span class="muted">'+esc(d.district||'')+'</span></div>':''
   }).join(''):'Henüz rut oluşturulmadı.';
-  const pp=state.payments.filter(p=>!['paid','cancelled'].includes(p.status)).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6);
+  const pp=myPayments.filter(p=>!['paid','cancelled'].includes(p.status)).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6);
   dashboardPayments.innerHTML=pp.length?pp.map(p=>{
     const d=state.dealers.find(x=>x.id===p.dealerId), s=paymentStatus(p);
     return '<div class="item"><strong>'+esc(d?.name||'Bilinmeyen bayi')+'</strong>'+fmtMoney(p.amount)+' • '+p.date+' <span class="badge '+s.cls+'">'+s.text+'</span></div>'
