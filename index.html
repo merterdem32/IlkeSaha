@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260921-10"/>
+  <link rel="stylesheet" href="/styles.css?v=20260921-11"/>
 </head>
 <body>
 <header>
@@ -150,6 +150,24 @@
           <input id="newTeamPassword" type="password" autocomplete="new-password" placeholder="En az 8 karakter">
           <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="managerCreateTeamUser()">Kullanıcı Oluştur</button>
         </div>
+        <div class="card span-12">
+          <div class="toolbar" style="justify-content:space-between;align-items:flex-end">
+            <div>
+              <h3 style="margin:0">Rut Yönetimi</h3>
+              <div class="muted">Personel ve tarih seçerek günlük rutu görüntüle, sırala ve düzenle.</div>
+            </div>
+            <div class="toolbar" style="margin:0;min-width:420px">
+              <div style="flex:1"><label>Personel</label><select id="managerRouteStaff" onchange="loadManagerRoute()"></select></div>
+              <div style="flex:1"><label>Tarih</label><input id="managerRouteDate" type="date" onchange="loadManagerRoute()"></div>
+            </div>
+          </div>
+          <div id="managerRouteSummary" class="muted" style="margin:8px 0">Personel seçiliyor…</div>
+          <div id="managerRouteList" class="list"></div>
+          <div class="toolbar" style="margin-top:12px">
+            <select id="managerRouteAddDealer" style="flex:1;min-width:260px"></select>
+            <button class="btn btn-primary" onclick="managerAddRouteDealer()">+ Bayi Ekle</button>
+          </div>
+        </div>
         <div class="card span-6">
           <h3>Son Aktiviteler</h3>
           <div id="managerActivityList" class="list muted">Son işlemler burada görünür.</div>
@@ -275,24 +293,24 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260921-10"></script>
-<script src="/seed-01.js?v=20260921-10"></script>
-<script src="/seed-02.js?v=20260921-10"></script>
-<script src="/seed-03.js?v=20260921-10"></script>
-<script src="/seed-04.js?v=20260921-10"></script>
-<script src="/seed-05.js?v=20260921-10"></script>
-<script src="/seed-06.js?v=20260921-10"></script>
-<script src="/seed-07.js?v=20260921-10"></script>
-<script src="/seed-08.js?v=20260921-10"></script>
-<script src="/seed-09.js?v=20260921-10"></script>
-<script src="/seed-10.js?v=20260921-10"></script>
-<script src="/seed-11.js?v=20260921-10"></script>
-<script src="/app-01.js?v=20260921-10"></script>
-<script src="/app-02.js?v=20260921-10"></script>
-<script src="/app-03.js?v=20260921-10"></script>
-<script src="/meetings.js?v=20260921-10"></script>
-<script src="/cloud.js?v=20260921-10"></script>
-<script src="/manager.js?v=20260921-10"></script>
+<script src="/supabase-config.js?v=20260921-11"></script>
+<script src="/seed-01.js?v=20260921-11"></script>
+<script src="/seed-02.js?v=20260921-11"></script>
+<script src="/seed-03.js?v=20260921-11"></script>
+<script src="/seed-04.js?v=20260921-11"></script>
+<script src="/seed-05.js?v=20260921-11"></script>
+<script src="/seed-06.js?v=20260921-11"></script>
+<script src="/seed-07.js?v=20260921-11"></script>
+<script src="/seed-08.js?v=20260921-11"></script>
+<script src="/seed-09.js?v=20260921-11"></script>
+<script src="/seed-10.js?v=20260921-11"></script>
+<script src="/seed-11.js?v=20260921-11"></script>
+<script src="/app-01.js?v=20260921-11"></script>
+<script src="/app-02.js?v=20260921-11"></script>
+<script src="/app-03.js?v=20260921-11"></script>
+<script src="/meetings.js?v=20260921-11"></script>
+<script src="/cloud.js?v=20260921-11"></script>
+<script src="/manager.js?v=20260921-11"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
