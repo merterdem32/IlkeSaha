@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260921-18"/>
+  <link rel="stylesheet" href="/styles.css?v=20260921-19"/>
 </head>
 <body>
 <header>
@@ -181,6 +181,32 @@
           <div class="muted">Bugün ve son 7 gün için saha aktivitesi.</div>
           <div id="managerPerformanceList" class="list" style="margin-top:10px"></div>
         </div>
+
+        <div class="card span-12">
+          <div class="toolbar" style="justify-content:space-between;align-items:flex-end">
+            <div>
+              <h3 style="margin:0">Tarih Aralıklı Rapor</h3>
+              <div class="muted">Personel bazında ziyaret, ödeme sözü ve bayi hareketlerini incele.</div>
+            </div>
+            <div class="toolbar" style="margin:0;flex-wrap:wrap">
+              <div><label>Personel</label><select id="managerReportStaff" onchange="loadManagerReport()"><option value="all">Tüm personel</option></select></div>
+              <div><label>Başlangıç</label><input id="managerReportStart" type="date" onchange="loadManagerReport()"></div>
+              <div><label>Bitiş</label><input id="managerReportEnd" type="date" onchange="loadManagerReport()"></div>
+              <button class="btn btn-ghost" onclick="setManagerReportRange(7)">Son 7 Gün</button>
+              <button class="btn btn-ghost" onclick="setManagerReportRange(30)">Son 30 Gün</button>
+            </div>
+          </div>
+
+          <div class="grid" style="margin-top:12px">
+            <div class="card span-3"><div class="muted">Ziyaret</div><div id="mgrReportVisits" class="kpi">-</div></div>
+            <div class="card span-3"><div class="muted">Ziyaret edilen bayi</div><div id="mgrReportDealers" class="kpi">-</div></div>
+            <div class="card span-3"><div class="muted">Ödeme sözü</div><div id="mgrReportPayments" class="kpi">-</div></div>
+            <div class="card span-3"><div class="muted">Toplam ödeme sözü</div><div id="mgrReportPaymentAmount" class="kpi" style="font-size:24px">-</div></div>
+          </div>
+
+          <div id="managerReportSummary" class="muted" style="margin:10px 0"></div>
+          <div id="managerReportList" class="list"></div>
+        </div>
         <div class="card span-6">
           <h3>Son Aktiviteler</h3>
           <div id="managerActivityList" class="list muted">Son işlemler burada görünür.</div>
@@ -306,24 +332,24 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260921-18"></script>
-<script src="/seed-01.js?v=20260921-18"></script>
-<script src="/seed-02.js?v=20260921-18"></script>
-<script src="/seed-03.js?v=20260921-18"></script>
-<script src="/seed-04.js?v=20260921-18"></script>
-<script src="/seed-05.js?v=20260921-18"></script>
-<script src="/seed-06.js?v=20260921-18"></script>
-<script src="/seed-07.js?v=20260921-18"></script>
-<script src="/seed-08.js?v=20260921-18"></script>
-<script src="/seed-09.js?v=20260921-18"></script>
-<script src="/seed-10.js?v=20260921-18"></script>
-<script src="/seed-11.js?v=20260921-18"></script>
-<script src="/app-01.js?v=20260921-18"></script>
-<script src="/app-02.js?v=20260921-18"></script>
-<script src="/app-03.js?v=20260921-18"></script>
-<script src="/meetings.js?v=20260921-18"></script>
-<script src="/cloud.js?v=20260921-18"></script>
-<script src="/manager.js?v=20260921-18"></script>
+<script src="/supabase-config.js?v=20260921-19"></script>
+<script src="/seed-01.js?v=20260921-19"></script>
+<script src="/seed-02.js?v=20260921-19"></script>
+<script src="/seed-03.js?v=20260921-19"></script>
+<script src="/seed-04.js?v=20260921-19"></script>
+<script src="/seed-05.js?v=20260921-19"></script>
+<script src="/seed-06.js?v=20260921-19"></script>
+<script src="/seed-07.js?v=20260921-19"></script>
+<script src="/seed-08.js?v=20260921-19"></script>
+<script src="/seed-09.js?v=20260921-19"></script>
+<script src="/seed-10.js?v=20260921-19"></script>
+<script src="/seed-11.js?v=20260921-19"></script>
+<script src="/app-01.js?v=20260921-19"></script>
+<script src="/app-02.js?v=20260921-19"></script>
+<script src="/app-03.js?v=20260921-19"></script>
+<script src="/meetings.js?v=20260921-19"></script>
+<script src="/cloud.js?v=20260921-19"></script>
+<script src="/manager.js?v=20260921-19"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
