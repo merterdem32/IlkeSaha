@@ -3,7 +3,7 @@
   "short_name": "İlke Saha",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#f4f5f7",
+  "theme_color": "#e30613",
   "description": "Bayi, ziyaret, tahsilat ve rut yönetimi"
 }
