@@ -440,8 +440,6 @@ async function syncStateToCloud(initial=false){
       .upsert(settings,{onConflict:'user_id'});
     if(settingsErr) throw settingsErr;
 
-    await syncPersonalDailyRouteToCloud();
-
     updateCloudUi('Buluta kaydedildi • '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}));
   }catch(err){
     console.error('Cloud sync error',err);
@@ -520,8 +518,6 @@ async function loadStateFromCloud(){
       if(document.getElementById('preferHomeFinish')) preferHomeFinish.checked=s.prefer_home_finish!==false;
     }
 
-    await seedLegacyRecurringRoutesForCurrentUser();
-    await materializeDailyRouteFromRecurring(cloudUser.id,todayStr());
     await loadPersonalDailyRouteFromCloud();
     localStorage.setItem(storeKey,JSON.stringify(state));
     renderAll();
@@ -722,15 +718,23 @@ async function migrateCurrentUserToSaha1(){
 }
 
 
-async function syncPersonalDailyRouteToCloud(){
-  if(!cloudUser||!supabaseClient||!teamContext.organizationId||teamContext.role!=='FIELD_STAFF')return;
+async function publishTodayRoute(){
+  if(!cloudUser||!supabaseClient||teamContext.role!=='FIELD_STAFF'){
+    alert('Bu işlem saha personeli hesabında kullanılabilir.');
+    return;
+  }
+  if(!(state.todayRoute||[]).length){
+    alert('Önce bugünkü rutunu oluştur.');
+    return;
+  }
+
   try{
     const routeDate=todayStr();
     const {data:route,error}=await supabaseClient.from('daily_routes').upsert({
       organization_id:teamContext.organizationId,
       assigned_user_id:cloudUser.id,
       route_date:routeDate,
-      status:'IN_PROGRESS',
+      status:'PLANNED',
       created_by:cloudUser.id,
       updated_by:cloudUser.id,
       updated_at:new Date().toISOString()
@@ -740,16 +744,21 @@ async function syncPersonalDailyRouteToCloud(){
     const {error:delErr}=await supabaseClient.from('route_stops').delete().eq('route_id',route.id);
     if(delErr) throw delErr;
 
-    if((state.todayRoute||[]).length){
-      const rows=state.todayRoute.map((dealerId,i)=>({
-        route_id:route.id,dealer_id:dealerId,stop_order:i+1
-      }));
-      const {error:insErr}=await supabaseClient.from('route_stops').insert(rows);
-      if(insErr) throw insErr;
-    }
+    const rows=state.todayRoute.map((dealerId,i)=>({
+      route_id:route.id,
+      dealer_id:dealerId,
+      stop_order:i+1
+    }));
+    const {error:insErr}=await supabaseClient.from('route_stops').insert(rows);
+    if(insErr) throw insErr;
+
+    const status=document.getElementById('routePublishStatus');
+    if(status) status.textContent='Yöneticiyle paylaşıldı • '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+    if(typeof logActivity==='function') await logActivity('ROUTE_PUBLISHED','ROUTE',route.id,{count:rows.length,date:routeDate});
+    alert('Bugünkü rut yöneticiyle paylaşıldı.');
   }catch(err){
-    // Faz 4 SQL henüz kurulmadıysa mevcut saha uygulamasını bozma.
-    console.warn('Daily route mirror skipped',err);
+    console.error('Route publish failed',err);
+    alert('Rut paylaşılamadı: '+(err.message||err));
   }
 }
 
@@ -763,7 +772,12 @@ async function loadPersonalDailyRouteFromCloud(){
       .eq('assigned_user_id',cloudUser.id)
       .eq('route_date',routeDate)
       .maybeSingle();
-    if(error||!route)return;
+    if(error)return;
+    const status=document.getElementById('routePublishStatus');
+    if(!route){
+      if(status) status.textContent='Bugünkü rut henüz yöneticiyle paylaşılmadı.';
+      return;
+    }
 
     const {data:stops,error:stopsErr}=await supabaseClient.from('route_stops')
       .select('dealer_id,stop_order')
@@ -772,6 +786,8 @@ async function loadPersonalDailyRouteFromCloud(){
     if(stopsErr)return;
 
     state.todayRoute=(stops||[]).map(s=>s.dealer_id);
+    const status=document.getElementById('routePublishStatus');
+    if(status) status.textContent='Bugünkü paylaşılmış rut yüklendi.';
   }catch(err){
     console.warn('Daily route load skipped',err);
   }
