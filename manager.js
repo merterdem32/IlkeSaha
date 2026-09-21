@@ -69,15 +69,7 @@ async function renderManagementDashboard(){
       }).join(''):'<div class="muted">Aktif ekip üyesi yok.</div>';
     }
 
-    const staffListEl=document.getElementById('managerStaffList');
-    if(staffListEl && !document.getElementById('managerRouteNotice')){
-      const notice=document.createElement('div');
-      notice.id='managerRouteNotice';
-      notice.className='note';
-      notice.style.marginTop='12px';
-      notice.innerHTML='<strong>Rut Yönetimi</strong><br><span class="muted">Bir sonraki aşamada saha1 / saha2 / saha3 seçerek personelin günlük rutunu görüntüleme ve düzenleme burada devreye alınacak. Mevcut saha personelinin kişisel Rut Planı ekranı yöneticiye artık gösterilmiyor.</span>';
-      staffListEl.parentElement.appendChild(notice);
-    }
+    setTimeout(()=>prepareManagerRouteControls(),0);
 
     const actList=document.getElementById('managerActivityList');
     if(actList){
@@ -113,7 +105,8 @@ function formatActivityAction(action){
     DEALER_DEACTIVATED:'Bayi rut dışı bırakıldı',
     MEETING_NOTE_ADDED:'Toplantı notu eklendi',
     MEETING_NOTE_DONE:'Toplantı notu tamamlandı',
-    UPDATE_USER:'Kullanıcı bilgileri güncellendi'
+    UPDATE_USER:'Kullanıcı bilgileri güncellendi',
+    ROUTE_UPDATED:'Rut güncellendi'
   };
   return map[action]||action;
 }
@@ -184,4 +177,202 @@ async function saveTeamUserEdit(){
   editTeamUserDialog.close();
   await renderManagementDashboard();
   alert('Kullanıcı bilgileri güncellendi.');
+}
+
+
+let managerCurrentRouteId=null;
+let managerCurrentRouteStops=[];
+
+async function prepareManagerRouteControls(){
+  if(teamContext?.role!=='MANAGER')return;
+  const staffSel=document.getElementById('managerRouteStaff');
+  const dateEl=document.getElementById('managerRouteDate');
+  const dealerSel=document.getElementById('managerRouteAddDealer');
+  if(!staffSel||!dateEl||!dealerSel)return;
+
+  await loadManagerDirectory();
+
+  const fieldMembers=managerDirectoryCache.members.filter(m=>m.role==='FIELD_STAFF'&&m.is_active!==false);
+  const current=staffSel.value;
+  staffSel.innerHTML=fieldMembers.map(m=>{
+    const p=managerDirectoryCache.profiles.get(m.user_id)||{};
+    const label=p.full_name||p.username||p.email||m.user_id;
+    return '<option value="'+esc(m.user_id)+'">'+esc(label)+(p.username?' ('+esc(p.username)+')':'')+'</option>';
+  }).join('');
+  if(current&&fieldMembers.some(m=>m.user_id===current)) staffSel.value=current;
+
+  if(!dateEl.value) dateEl.value=todayStr();
+
+  dealerSel.innerHTML=state.dealers
+    .filter(d=>d.isActive!==false)
+    .sort((a,b)=>String(a.name).localeCompare(String(b.name),'tr'))
+    .map(d=>'<option value="'+esc(d.id)+'">'+esc(d.name)+' • '+esc(d.district||'')+'</option>')
+    .join('');
+
+  await loadManagerRoute();
+}
+
+async function loadManagerRoute(){
+  if(teamContext?.role!=='MANAGER')return;
+  const staffId=document.getElementById('managerRouteStaff')?.value;
+  const routeDate=document.getElementById('managerRouteDate')?.value||todayStr();
+  const list=document.getElementById('managerRouteList');
+  const summary=document.getElementById('managerRouteSummary');
+  if(!staffId||!list||!summary)return;
+
+  summary.textContent='Rut yükleniyor…';
+  list.innerHTML='';
+
+  const {data:route,error}=await supabaseClient
+    .from('daily_routes')
+    .select('id,status,assigned_user_id,route_date')
+    .eq('organization_id',teamContext.organizationId)
+    .eq('assigned_user_id',staffId)
+    .eq('route_date',routeDate)
+    .maybeSingle();
+
+  if(error){
+    managerCurrentRouteId=null;
+    managerCurrentRouteStops=[];
+    summary.textContent='Rut tablosu hazır değil veya yüklenemedi: '+error.message;
+    return;
+  }
+
+  managerCurrentRouteId=route?.id||null;
+
+  if(!route){
+    managerCurrentRouteStops=[];
+    summary.innerHTML='<span class="badge b-warn">Bu tarih için kayıtlı rut yok.</span>';
+    list.innerHTML='<div class="muted">Aşağıdan bayi ekleyerek bu personel için yeni rut oluşturabilirsin.</div>';
+    return;
+  }
+
+  const {data:stops,error:stopsError}=await supabaseClient
+    .from('route_stops')
+    .select('id,dealer_id,stop_order')
+    .eq('route_id',route.id)
+    .order('stop_order');
+
+  if(stopsError){
+    summary.textContent='Rut durakları yüklenemedi: '+stopsError.message;
+    return;
+  }
+
+  managerCurrentRouteStops=stops||[];
+  const visitsForDay=state.visits.filter(v=>
+    (v._actorUserId||v._ownerUserId)===staffId &&
+    String(v.date||'').slice(0,10)===routeDate
+  );
+
+  const visitedDealerIds=new Set(visitsForDay.map(v=>v.dealerId));
+  const p=managerDirectoryCache.profiles.get(staffId)||{};
+  const staffName=p.full_name||p.username||'Personel';
+
+  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+routeDate+
+    ' • <strong>'+managerCurrentRouteStops.length+' bayi</strong>'+
+    ' • '+managerCurrentRouteStops.filter(s=>visitedDealerIds.has(s.dealer_id)).length+' ziyaret kaydı';
+
+  list.innerHTML=managerCurrentRouteStops.length?managerCurrentRouteStops.map((s,i)=>{
+    const d=state.dealers.find(x=>x.id===s.dealer_id);
+    const visited=visitedDealerIds.has(s.dealer_id);
+    return '<div class="item">'+
+      '<div class="toolbar" style="justify-content:space-between;align-items:center;margin:0">'+
+        '<div style="min-width:0;flex:1">'+
+          '<strong>'+(i+1)+'. '+esc(d?.name||s.dealer_id)+'</strong>'+
+          '<span class="muted">'+esc(d?.district||'')+(visited?' • Bugün ziyaret kaydı var':'')+'</span>'+
+        '</div>'+
+        '<div class="toolbar" style="margin:0">'+
+          '<button class="btn btn-ghost" '+(i===0?'disabled':'')+' onclick="managerMoveRouteStop('+i+',-1)">↑</button>'+
+          '<button class="btn btn-ghost" '+(i===managerCurrentRouteStops.length-1?'disabled':'')+' onclick="managerMoveRouteStop('+i+',1)">↓</button>'+
+          '<button class="btn btn-danger" onclick="managerRemoveRouteStop('+i+')">Çıkar</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join(''):'<div class="muted">Bu rut henüz boş.</div>';
+}
+
+async function ensureManagerRoute(){
+  const staffId=document.getElementById('managerRouteStaff')?.value;
+  const routeDate=document.getElementById('managerRouteDate')?.value||todayStr();
+  if(!staffId) throw new Error('Personel seçilmedi.');
+
+  if(managerCurrentRouteId)return managerCurrentRouteId;
+
+  const {data,error}=await supabaseClient.from('daily_routes').insert({
+    organization_id:teamContext.organizationId,
+    assigned_user_id:staffId,
+    route_date:routeDate,
+    status:'PLANNED',
+    created_by:cloudUser.id,
+    updated_by:cloudUser.id
+  }).select('id').single();
+
+  if(error) throw error;
+  managerCurrentRouteId=data.id;
+  return data.id;
+}
+
+async function saveManagerRouteStops(){
+  if(!managerCurrentRouteId)return;
+
+  const {error:delError}=await supabaseClient.from('route_stops')
+    .delete().eq('route_id',managerCurrentRouteId);
+  if(delError) throw delError;
+
+  if(managerCurrentRouteStops.length){
+    const rows=managerCurrentRouteStops.map((s,i)=>({
+      route_id:managerCurrentRouteId,
+      dealer_id:s.dealer_id,
+      stop_order:i+1
+    }));
+    const {error}=await supabaseClient.from('route_stops').insert(rows);
+    if(error) throw error;
+  }
+
+  await supabaseClient.from('daily_routes').update({
+    updated_by:cloudUser.id,
+    updated_at:new Date().toISOString()
+  }).eq('id',managerCurrentRouteId);
+}
+
+async function managerAddRouteDealer(){
+  try{
+    const dealerId=document.getElementById('managerRouteAddDealer')?.value;
+    if(!dealerId){alert('Bayi seç.');return}
+    if(managerCurrentRouteStops.some(s=>s.dealer_id===dealerId)){
+      alert('Bu bayi zaten rut içinde.');
+      return;
+    }
+    await ensureManagerRoute();
+    managerCurrentRouteStops.push({dealer_id:dealerId,stop_order:managerCurrentRouteStops.length+1});
+    await saveManagerRouteStops();
+    await logActivity('ROUTE_UPDATED','ROUTE',managerCurrentRouteId,{action:'ADD_STOP',dealer_id:dealerId});
+    await loadManagerRoute();
+  }catch(err){alert('Bayi ruta eklenemedi: '+(err.message||err))}
+}
+
+async function managerRemoveRouteStop(index){
+  try{
+    const item=managerCurrentRouteStops[index];
+    if(!item)return;
+    const d=state.dealers.find(x=>x.id===item.dealer_id);
+    if(!confirm((d?.name||'Bayi')+' bu günlük ruttan çıkarılsın mı?'))return;
+    managerCurrentRouteStops.splice(index,1);
+    await saveManagerRouteStops();
+    await logActivity('ROUTE_UPDATED','ROUTE',managerCurrentRouteId,{action:'REMOVE_STOP',dealer_id:item.dealer_id});
+    await loadManagerRoute();
+  }catch(err){alert('Rut güncellenemedi: '+(err.message||err))}
+}
+
+async function managerMoveRouteStop(index,delta){
+  const target=index+delta;
+  if(target<0||target>=managerCurrentRouteStops.length)return;
+  const tmp=managerCurrentRouteStops[index];
+  managerCurrentRouteStops[index]=managerCurrentRouteStops[target];
+  managerCurrentRouteStops[target]=tmp;
+  try{
+    await saveManagerRouteStops();
+    await logActivity('ROUTE_UPDATED','ROUTE',managerCurrentRouteId,{action:'REORDER'});
+    await loadManagerRoute();
+  }catch(err){alert('Rut sırası güncellenemedi: '+(err.message||err))}
 }
