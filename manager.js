@@ -142,7 +142,8 @@ function formatActivityAction(action){
     MEETING_NOTE_DONE:'Toplantı notu tamamlandı',
     UPDATE_USER:'Kullanıcı bilgileri güncellendi',
     ROUTE_UPDATED:'Rut güncellendi',
-    ROUTE_PUBLISHED:'Günlük rut onaylandı ve paylaşıldı'
+    ROUTE_PUBLISHED:'Günlük rut onaylandı ve paylaşıldı',
+    DEALERS_IMPORTED:'Excel ile bayiler yüklendi'
   };
   return map[action]||action;
 }
