@@ -45,6 +45,13 @@ function distanceKm(a,b){
   return 2*R*Math.asin(Math.sqrt(h));
 }
 
+function actorDisplayName(item){
+  const uid=item?._actorUserId||item?._ownerUserId||null;
+  if(!uid)return '-';
+  const p=(typeof teamProfilesById!=='undefined'&&teamProfilesById)?teamProfilesById.get(uid):null;
+  return p?.full_name||p?.username||p?.email||'Kullanıcı';
+}
+
 function lastVisitForDealer(id){
   return state.visits.filter(v=>v.dealerId===id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
 }
@@ -112,6 +119,7 @@ function renderDealers(){
       '<td>'+esc(d.address||'-')+'</td>'+
       '<td><span class="badge '+(d.locationStatus==='verified'?'b-ok':d.locationStatus==='estimated'?'b-warn':'b-info')+'">'+(d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini':'Konum girilmedi')+'</span></td>'+
       '<td>'+(lv?new Date(lv.date).toLocaleDateString('tr-TR'):'-')+'</td>'+
+      '<td class="manager-only-col">'+(lv?esc(actorDisplayName(lv)):'-')+'</td>'+
       '<td><button class="btn btn-ghost" onclick="showDealer(\''+d.id+'\')">Aç</button></td></tr>'
   }).join('');
 }
