@@ -17,6 +17,9 @@ function updateCloudUi(message){
     status.textContent=message || (cloudUser ? 'Bulut senkronizasyonu aktif'+role : 'Bu cihazdaki veriler henüz buluta bağlı değil.');
   }
   applyRoleUi();
+  if(cloudUser && teamContext.organizationId){
+    setTimeout(()=>refreshBootstrapAdminBox(),0);
+  }
 }
 
 function applyRoleUi(){
@@ -534,4 +537,60 @@ async function managerCreateTeamUser(){
 
   alert(data.username+' kullanıcısı oluşturuldu.');
   if(typeof renderManagementDashboard==='function') await renderManagementDashboard();
+}
+
+
+async function refreshBootstrapAdminBox(){
+  const box=document.getElementById('bootstrapAdminBox');
+  if(!box||!cloudUser||!supabaseClient||!teamContext.organizationId)return;
+
+  try{
+    const {data,error}=await supabaseClient
+      .from('organization_members')
+      .select('user_id,role')
+      .eq('organization_id',teamContext.organizationId)
+      .eq('role','MANAGER')
+      .eq('is_active',true)
+      .limit(1);
+
+    if(error) throw error;
+
+    const {data:allowed,error:allowErr}=await supabaseClient
+      .rpc('can_manage_users',{target_org:teamContext.organizationId});
+
+    if(allowErr) throw allowErr;
+
+    box.style.display=(allowed && !data?.length)?'':'none';
+  }catch(err){
+    console.error('Bootstrap admin check failed',err);
+    box.style.display='none';
+  }
+}
+
+async function createFirstAdmin(){
+  if(!cloudUser||!supabaseClient){alert('Önce giriş yap.');return}
+
+  const username=(document.getElementById('bootstrapAdminUsername')?.value||'admin').trim().toLowerCase();
+  const fullName=(document.getElementById('bootstrapAdminFullName')?.value||'').trim();
+  const password=document.getElementById('bootstrapAdminPassword')?.value||'';
+
+  if(!username||!password){alert('Kullanıcı adı ve şifre gerekli.');return}
+  if(password.length<8){alert('Şifre en az 8 karakter olmalı.');return}
+
+  const {data,error}=await supabaseClient.functions.invoke('create-team-user',{
+    body:{username,password,role:'MANAGER',fullName}
+  });
+
+  if(error){
+    alert('Admin hesabı oluşturulamadı: '+(error.message||error));
+    return;
+  }
+  if(!data?.ok){
+    alert('Admin hesabı oluşturulamadı: '+(data?.error||'Bilinmeyen hata'));
+    return;
+  }
+
+  alert('Admin hesabı oluşturuldu. Kullanıcı adı: '+data.username);
+  document.getElementById('bootstrapAdminPassword').value='';
+  await refreshBootstrapAdminBox();
 }
