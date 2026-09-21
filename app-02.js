@@ -71,7 +71,12 @@ function markPaid(id){const p=state.payments.find(x=>x.id===id);if(p){p.status='
 
 function markRouteDraftChanged(){
   const el=document.getElementById('routePublishStatus');
-  if(el && state.todayRoute?.length){
+  if(!el || !state.todayRoute?.length)return;
+  const uid=(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:'local';
+  const key='ilkeSahaPublishedRoute:'+uid+':'+todayStr();
+  const published=localStorage.getItem(key);
+  const current=(state.todayRoute||[]).filter(Boolean).join('|');
+  if(!published || published!==current){
     el.textContent='Bugünkü rut taslak durumda. Son değişiklikleri yöneticiye göndermek için tekrar onayla.';
   }
 }
