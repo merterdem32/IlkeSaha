@@ -31,7 +31,9 @@ function showDealer(id){
     '<div class="toolbar"><button class="btn btn-primary" onclick="detailDialog.close();openVisitModal(\''+id+'\')">+ Ziyaret Kaydı</button>'+
     '<button class="btn btn-accent" onclick="detailDialog.close();openPaymentModal(\''+id+'\')">+ Ödeme Sözü</button></div>'+
     '<h3>Ziyaret geçmişi</h3>'+
-    (visits.length?visits.map(v=>'<div class="note"><strong>'+new Date(v.date).toLocaleString('tr-TR')+'</strong><br>'+esc(v.note||'-')+(v.followUp?'<br><span class="muted">Takip: '+v.followUp+'</span>':'')+'</div>').join(''):'<div class="muted">Henüz ziyaret kaydı yok.</div>')+
+    (visits.length?visits.map(v=>'<div class="note"><strong>'+new Date(v.date).toLocaleString('tr-TR')+'</strong>'+
+      ((typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER')?'<br><span class="muted">Ziyaret eden: '+esc(actorDisplayName(v))+'</span>':'')+
+      '<br>'+esc(v.note||'-')+(v.followUp?'<br><span class="muted">Takip: '+v.followUp+'</span>':'')+'</div>').join(''):'<div class="muted">Henüz ziyaret kaydı yok.</div>')+
     '<h3 style="margin-top:18px">Ödeme sözleri</h3>'+
     (pays.length?pays.map(p=>{const s=paymentStatus(p);return '<div class="payment"><strong>'+fmtMoney(p.amount)+'</strong> • '+p.date+' <span class="badge '+s.cls+'">'+s.text+'</span><br>'+esc(p.note||'')+'</div>'}).join(''):'<div class="muted">Henüz ödeme sözü yok.</div>');
   detailDialog.showModal();
@@ -42,7 +44,9 @@ function openVisitModal(id){
 }
 
 function saveVisit(){
-  state.visits.push({id:crypto.randomUUID(),dealerId:visitDealerId.value,date:visitDate.value||dtLocalNow(),note:visitNote.value.trim(),followUp:visitFollowUp.value});
+  state.visits.push({id:crypto.randomUUID(),dealerId:visitDealerId.value,date:visitDate.value||dtLocalNow(),note:visitNote.value.trim(),followUp:visitFollowUp.value,
+    _ownerUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
+    _actorUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null});
   visitDialog.close(); persist(); if(typeof logActivity==='function') logActivity('VISIT_ADDED','DEALER',visitDealerId.value,{note:visitNote.value.trim()});
 }
 
@@ -54,7 +58,9 @@ function openPaymentModal(id){
 
 function savePayment(){
   if(!paymentDealer.value||!paymentAmount.value){alert('Bayi ve tutar gerekli.');return}
-  state.payments.push({id:crypto.randomUUID(),dealerId:paymentDealer.value,amount:Number(paymentAmount.value),date:paymentDate.value,note:paymentNote.value.trim(),status:'pending'});
+  state.payments.push({id:crypto.randomUUID(),dealerId:paymentDealer.value,amount:Number(paymentAmount.value),date:paymentDate.value,note:paymentNote.value.trim(),status:'pending',
+    _ownerUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
+    _actorUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null});
   paymentDialog.close(); persist(); if(typeof logActivity==='function') logActivity('PAYMENT_ADDED','DEALER',paymentDealer.value,{amount:Number(paymentAmount.value||0)});
 }
 
@@ -63,6 +69,7 @@ function renderPayments(){
     const d=state.dealers.find(x=>x.id===p.dealerId), s=paymentStatus(p);
     return '<tr><td><strong>'+esc(d?.name||'Bilinmeyen')+'</strong></td><td>'+fmtMoney(p.amount)+'</td><td>'+p.date+'</td>'+
       '<td><span class="badge '+s.cls+'">'+s.text+'</span></td><td>'+esc(p.note||'-')+'</td>'+
+      '<td class="manager-only-col">'+esc(actorDisplayName(p))+'</td>'+
       '<td>'+(p.status==='paid'?'':'<button class="btn btn-ghost" onclick="markPaid(\''+p.id+'\')">Ödendi</button>')+'</td></tr>'
   }).join('');
 }
