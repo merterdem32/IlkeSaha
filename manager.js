@@ -106,7 +106,8 @@ function formatActivityAction(action){
     MEETING_NOTE_ADDED:'Toplantı notu eklendi',
     MEETING_NOTE_DONE:'Toplantı notu tamamlandı',
     UPDATE_USER:'Kullanıcı bilgileri güncellendi',
-    ROUTE_UPDATED:'Rut güncellendi'
+    ROUTE_UPDATED:'Rut güncellendi',
+    ROUTE_PUBLISHED:'Günlük rut onaylandı ve paylaşıldı'
   };
   return map[action]||action;
 }
@@ -241,21 +242,9 @@ async function loadManagerRoute(){
   managerCurrentRouteId=route?.id||null;
 
   if(!route){
-    try{
-      const createdId=await materializeDailyRouteFromRecurring(staffId,routeDate);
-      if(createdId){
-        managerCurrentRouteId=createdId;
-        return await loadManagerRoute();
-      }
-    }catch(err){
-      console.warn('Recurring route materialization failed',err);
-    }
-
     managerCurrentRouteStops=[];
-    const cycle=getRouteCycleForDate(routeDate);
-    summary.innerHTML='<span class="badge b-warn">Bu tarih için rut yok.</span> '+
-      '<span class="muted">'+cycle.cycleWeek+'. hafta / '+cycle.weekday+'. gün için sabit rut şablonu bulunamadı.</span>';
-    list.innerHTML='<div class="muted">Bu personel için önce sabit haftalık rut tanımlanmalı veya aşağıdan bayi eklenebilir.</div>';
+    summary.innerHTML='<span class="badge b-warn">Personel bu tarih için rutunu henüz onaylayıp paylaşmadı.</span>';
+    list.innerHTML='<div class="muted">Saha personeli kendi hesabından günlük rutunu oluşturup “Bugünkü Rutu Onayla ve Yöneticiye Gönder” dediğinde burada görünecek.</div>';
     return;
   }
 
@@ -280,9 +269,7 @@ async function loadManagerRoute(){
   const p=managerDirectoryCache.profiles.get(staffId)||{};
   const staffName=p.full_name||p.username||'Personel';
 
-  const cycle=getRouteCycleForDate(routeDate);
-  const cycleLabel=cycle.weekday<=6 ? cycle.cycleWeek+'. HAFTA • '+['','PAZARTESİ','SALI','ÇARŞAMBA','PERŞEMBE','CUMA','CUMARTESİ'][cycle.weekday] : 'PAZAR';
-  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+routeDate+' • '+cycleLabel+
+  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+routeDate+
     ' • <strong>'+managerCurrentRouteStops.length+' bayi</strong>'+
     ' • '+managerCurrentRouteStops.filter(s=>visitedDealerIds.has(s.dealer_id)).length+' ziyaret kaydı';
 
