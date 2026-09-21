@@ -15,7 +15,7 @@ function saveDealer(){
     obj.plannedStage=old.plannedStage; obj.originalRouteLogic=old.originalRouteLogic; obj.departure=old.departure; obj.isActive=old.isActive!==false;
     state.dealers[i]=obj;
   }else state.dealers.push(obj);
-  dealerDialog.close(); persist();
+  dealerDialog.close(); persist(); if(typeof logActivity==='function') logActivity('DEALER_UPDATED','DEALER',obj.id,{name:obj.name});
 }
 
 function showDealer(id){
@@ -43,7 +43,7 @@ function openVisitModal(id){
 
 function saveVisit(){
   state.visits.push({id:crypto.randomUUID(),dealerId:visitDealerId.value,date:visitDate.value||dtLocalNow(),note:visitNote.value.trim(),followUp:visitFollowUp.value});
-  visitDialog.close(); persist();
+  visitDialog.close(); persist(); if(typeof logActivity==='function') logActivity('VISIT_ADDED','DEALER',visitDealerId.value,{note:visitNote.value.trim()});
 }
 
 function openPaymentModal(id){
@@ -55,7 +55,7 @@ function openPaymentModal(id){
 function savePayment(){
   if(!paymentDealer.value||!paymentAmount.value){alert('Bayi ve tutar gerekli.');return}
   state.payments.push({id:crypto.randomUUID(),dealerId:paymentDealer.value,amount:Number(paymentAmount.value),date:paymentDate.value,note:paymentNote.value.trim(),status:'pending'});
-  paymentDialog.close(); persist();
+  paymentDialog.close(); persist(); if(typeof logActivity==='function') logActivity('PAYMENT_ADDED','DEALER',paymentDealer.value,{amount:Number(paymentAmount.value||0)});
 }
 
 function renderPayments(){
@@ -67,7 +67,7 @@ function renderPayments(){
   }).join('');
 }
 
-function markPaid(id){const p=state.payments.find(x=>x.id===id);if(p){p.status='paid';p.paidAt=new Date().toISOString();persist()}}
+function markPaid(id){const p=state.payments.find(x=>x.id===id);if(p){p.status='paid';p.paidAt=new Date().toISOString();persist();if(typeof logActivity==='function') logActivity('PAYMENT_PAID','DEALER',p.dealerId,{paymentId:p.id})}}
 
 function loadOriginalPlan(){
   const week=planWeek.value, day=planDay.value;
@@ -213,6 +213,7 @@ function deactivateDealerFromRoute(id){
   d.isActive=false;
   state.todayRoute=(state.todayRoute||[]).filter(x=>x!==id);
   persist();
+  if(typeof logActivity==='function') logActivity('VISIT_MARKED','DEALER',id,{});
 }
 
 
@@ -282,6 +283,7 @@ function undoRouteVisited(id){
   const target=quickMarkers[0];
   state.visits=state.visits.filter(v=>v.id!==target.id);
   persist();
+  if(typeof logActivity==='function') logActivity('VISIT_UNDONE','DEALER',id,{});
 }
 
 
