@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260920-13"/>
+  <link rel="stylesheet" href="/styles.css?v=20260921-1"/>
 </head>
 <body>
 <header>
@@ -29,6 +29,7 @@
     <button data-section="route">Rut Planı</button>
     <button data-section="payments">Ödemeler</button>
     <button data-section="meetings">Toplantı Notları</button>
+    <button id="managementNavBtn" data-section="management" style="display:none">Yönetim</button>
     <button data-section="settings">Ayarlar</button>
   </nav>
   <main>
@@ -113,6 +114,32 @@
       </div>
     </section>
 
+    <section id="management" class="section">
+      <div class="grid">
+        <div class="card span-12">
+          <div class="toolbar" style="justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0">Yönetim Paneli</h2>
+              <div class="muted">Ekip, günlük saha aktiviteleri, ziyaretler ve ödeme sözleri.</div>
+            </div>
+            <span id="managementRoleBadge" class="badge b-info">MANAGER</span>
+          </div>
+        </div>
+        <div class="card span-3"><div class="muted">Aktif saha personeli</div><div id="mgrStaffCount" class="kpi">-</div></div>
+        <div class="card span-3"><div class="muted">Bugünkü ziyaret</div><div id="mgrVisitCount" class="kpi">-</div></div>
+        <div class="card span-3"><div class="muted">Bekleyen ödeme</div><div id="mgrPaymentCount" class="kpi">-</div></div>
+        <div class="card span-3"><div class="muted">Geciken ödeme</div><div id="mgrOverdueCount" class="kpi">-</div></div>
+        <div class="card span-6">
+          <h3>Personel Durumu</h3>
+          <div id="managerStaffList" class="list muted">Ekip altyapısı etkinleştirildikten sonra personeller burada görünecek.</div>
+        </div>
+        <div class="card span-6">
+          <h3>Son Aktiviteler</h3>
+          <div id="managerActivityList" class="list muted">Aktivite kaydı henüz etkin değil.</div>
+        </div>
+      </div>
+    </section>
+
     <section id="settings" class="section">
       <div class="grid">
         <div class="card span-6">
@@ -192,23 +219,23 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260920-13"></script>
-<script src="/seed-01.js?v=20260920-13"></script>
-<script src="/seed-02.js?v=20260920-13"></script>
-<script src="/seed-03.js?v=20260920-13"></script>
-<script src="/seed-04.js?v=20260920-13"></script>
-<script src="/seed-05.js?v=20260920-13"></script>
-<script src="/seed-06.js?v=20260920-13"></script>
-<script src="/seed-07.js?v=20260920-13"></script>
-<script src="/seed-08.js?v=20260920-13"></script>
-<script src="/seed-09.js?v=20260920-13"></script>
-<script src="/seed-10.js?v=20260920-13"></script>
-<script src="/seed-11.js?v=20260920-13"></script>
-<script src="/app-01.js?v=20260920-13"></script>
-<script src="/app-02.js?v=20260920-13"></script>
-<script src="/app-03.js?v=20260920-13"></script>
-<script src="/meetings.js?v=20260920-13"></script>
-<script src="/cloud.js?v=20260920-13"></script>
+<script src="/supabase-config.js?v=20260921-1"></script>
+<script src="/seed-01.js?v=20260921-1"></script>
+<script src="/seed-02.js?v=20260921-1"></script>
+<script src="/seed-03.js?v=20260921-1"></script>
+<script src="/seed-04.js?v=20260921-1"></script>
+<script src="/seed-05.js?v=20260921-1"></script>
+<script src="/seed-06.js?v=20260921-1"></script>
+<script src="/seed-07.js?v=20260921-1"></script>
+<script src="/seed-08.js?v=20260921-1"></script>
+<script src="/seed-09.js?v=20260921-1"></script>
+<script src="/seed-10.js?v=20260921-1"></script>
+<script src="/seed-11.js?v=20260921-1"></script>
+<script src="/app-01.js?v=20260921-1"></script>
+<script src="/app-02.js?v=20260921-1"></script>
+<script src="/app-03.js?v=20260921-1"></script>
+<script src="/meetings.js?v=20260921-1"></script>
+<script src="/cloud.js?v=20260921-1"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
