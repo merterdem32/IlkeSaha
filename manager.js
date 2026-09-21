@@ -104,6 +104,7 @@ async function renderManagementDashboard(){
 
     populateManagerStaffFilters();
     setTimeout(()=>prepareManagerRouteControls(),0);
+    setTimeout(()=>prepareManagerReportControls(),0);
 
     const actList=document.getElementById('managerActivityList');
     if(actList){
@@ -466,4 +467,145 @@ function populateManagerStaffFilters(){
     paymentFilter.innerHTML=options;
     if([...paymentFilter.options].some(o=>o.value===current)) paymentFilter.value=current;
   }
+}
+
+
+function localDateInputValue(d){
+  const x=new Date(d);
+  x.setMinutes(x.getMinutes()-x.getTimezoneOffset());
+  return x.toISOString().slice(0,10);
+}
+
+function setManagerReportRange(days){
+  const end=new Date();
+  const start=new Date(end.getTime()-(Math.max(1,days)-1)*86400000);
+  const startEl=document.getElementById('managerReportStart');
+  const endEl=document.getElementById('managerReportEnd');
+  if(startEl) startEl.value=localDateInputValue(start);
+  if(endEl) endEl.value=localDateInputValue(end);
+  loadManagerReport();
+}
+
+async function prepareManagerReportControls(){
+  if(teamContext?.role!=='MANAGER')return;
+  await loadManagerDirectory();
+
+  const staffEl=document.getElementById('managerReportStaff');
+  const startEl=document.getElementById('managerReportStart');
+  const endEl=document.getElementById('managerReportEnd');
+  if(!staffEl||!startEl||!endEl)return;
+
+  const current=staffEl.value||'all';
+  const fieldMembers=managerDirectoryCache.members.filter(m=>m.role==='FIELD_STAFF'&&m.is_active!==false);
+  staffEl.innerHTML='<option value="all">Tüm personel</option>'+fieldMembers.map(m=>{
+    const p=managerDirectoryCache.profiles.get(m.user_id)||{};
+    const label=p.full_name||p.username||p.email||m.user_id;
+    return '<option value="'+esc(m.user_id)+'">'+esc(label)+(p.username?' ('+esc(p.username)+')':'')+'</option>';
+  }).join('');
+  if([...staffEl.options].some(o=>o.value===current)) staffEl.value=current;
+
+  if(!endEl.value) endEl.value=todayStr();
+  if(!startEl.value){
+    const end=new Date(endEl.value+'T12:00:00');
+    startEl.value=localDateInputValue(new Date(end.getTime()-6*86400000));
+  }
+
+  await loadManagerReport();
+}
+
+async function loadManagerReport(){
+  if(teamContext?.role!=='MANAGER'||!supabaseClient)return;
+
+  const staffId=document.getElementById('managerReportStaff')?.value||'all';
+  const start=document.getElementById('managerReportStart')?.value;
+  const end=document.getElementById('managerReportEnd')?.value;
+  const list=document.getElementById('managerReportList');
+  const summary=document.getElementById('managerReportSummary');
+
+  if(!start||!end||!list||!summary)return;
+  if(start>end){
+    summary.textContent='Başlangıç tarihi bitiş tarihinden sonra olamaz.';
+    return;
+  }
+
+  summary.textContent='Rapor yükleniyor…';
+
+  const startIso=start+'T00:00:00';
+  const endExclusive=new Date(new Date(end+'T00:00:00').getTime()+86400000).toISOString();
+
+  let visitsQ=supabaseClient.from('visits')
+    .select('id,user_id,actor_user_id,dealer_id,visit_date,note,follow_up')
+    .eq('organization_id',teamContext.organizationId)
+    .gte('visit_date',startIso)
+    .lt('visit_date',endExclusive);
+
+  let paymentsQ=supabaseClient.from('payment_promises')
+    .select('id,user_id,actor_user_id,dealer_id,amount,promise_date,status,note,created_at')
+    .eq('organization_id',teamContext.organizationId)
+    .gte('created_at',startIso)
+    .lt('created_at',endExclusive);
+
+  if(staffId!=='all'){
+    visitsQ=visitsQ.eq('actor_user_id',staffId);
+    paymentsQ=paymentsQ.eq('actor_user_id',staffId);
+  }
+
+  const [vRes,pRes]=await Promise.all([visitsQ,paymentsQ]);
+  if(vRes.error||pRes.error){
+    summary.textContent='Rapor yüklenemedi: '+(vRes.error?.message||pRes.error?.message||'Bilinmeyen hata');
+    return;
+  }
+
+  const visits=vRes.data||[];
+  const payments=pRes.data||[];
+  const dealerIds=[...new Set(visits.map(v=>v.dealer_id).filter(Boolean))];
+
+  const vEl=document.getElementById('mgrReportVisits');
+  const dEl=document.getElementById('mgrReportDealers');
+  const pEl=document.getElementById('mgrReportPayments');
+  const aEl=document.getElementById('mgrReportPaymentAmount');
+
+  if(vEl)vEl.textContent=visits.length;
+  if(dEl)dEl.textContent=dealerIds.length;
+  if(pEl)pEl.textContent=payments.length;
+  if(aEl)aEl.textContent=fmtMoney(payments.reduce((s,p)=>s+Number(p.amount||0),0));
+
+  const byDay=new Map();
+  const ensureDay=date=>{
+    if(!byDay.has(date))byDay.set(date,{visits:0,dealers:new Set(),payments:0,amount:0});
+    return byDay.get(date);
+  };
+
+  visits.forEach(v=>{
+    const day=String(v.visit_date||'').slice(0,10);
+    const x=ensureDay(day);
+    x.visits++;
+    if(v.dealer_id)x.dealers.add(v.dealer_id);
+  });
+  payments.forEach(p=>{
+    const day=String(p.created_at||p.promise_date||'').slice(0,10);
+    const x=ensureDay(day);
+    x.payments++;
+    x.amount+=Number(p.amount||0);
+  });
+
+  const rows=[...byDay.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
+  list.innerHTML=rows.length?rows.map(([date,x])=>{
+    return '<div class="item">'+
+      '<strong>'+new Date(date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+'</strong>'+
+      '<div class="toolbar" style="margin:8px 0 0;gap:8px;flex-wrap:wrap">'+
+        '<span class="badge b-ok">'+x.visits+' ziyaret</span>'+
+        '<span class="badge b-info">'+x.dealers.size+' bayi</span>'+
+        '<span class="badge b-warn">'+x.payments+' ödeme sözü</span>'+
+        (x.amount?'<span class="badge b-info">'+fmtMoney(x.amount)+'</span>':'')+
+      '</div>'+
+    '</div>';
+  }).join(''):'<div class="muted">Seçili tarih aralığında kayıt yok.</div>';
+
+  const personLabel=staffId==='all'
+    ? 'Tüm personel'
+    : (managerDirectoryCache.profiles.get(staffId)?.full_name||managerDirectoryCache.profiles.get(staffId)?.username||'Personel');
+
+  summary.innerHTML='<strong>'+esc(personLabel)+'</strong> • '+start+' → '+end+
+    ' • '+visits.length+' ziyaret • '+dealerIds.length+' farklı bayi';
 }
