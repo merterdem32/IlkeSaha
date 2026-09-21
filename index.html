@@ -3,18 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#e30613" />
   <meta name="description" content="İlke Akü saha bayi, ziyaret, tahsilat ve rut yönetimi" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>İlke Saha</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260922-3"/>
+  <link rel="stylesheet" href="/styles.css?v=20260922-4"/>
 </head>
 <body>
 <header>
-  <div class="brand"><h1>İlke Saha</h1><small>Bayi • Ziyaret • Tahsilat • Akıllı Rut</small></div>
+  <div class="brand">
+    <img class="brand-logo" src="/ilke-logo.svg" alt="İlke Akü">
+    <div class="brand-copy"><h1>İlke Saha</h1><small>Bayi • Ziyaret • Tahsilat • Akıllı Rut</small></div>
+  </div>
   <div class="header-actions">
     <small id="cloudStatus">Bulut bağlantısı kontrol ediliyor…</small>
     <button id="cloudAccountBtn" class="btn btn-ghost" onclick="openCloudAccount()">☁ Bulut: Giriş Yap</button>
@@ -381,26 +384,26 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260922-3"></script>
-<script src="/seed-01.js?v=20260922-3"></script>
-<script src="/seed-02.js?v=20260922-3"></script>
-<script src="/seed-03.js?v=20260922-3"></script>
-<script src="/seed-04.js?v=20260922-3"></script>
-<script src="/seed-05.js?v=20260922-3"></script>
-<script src="/seed-06.js?v=20260922-3"></script>
-<script src="/seed-07.js?v=20260922-3"></script>
-<script src="/seed-08.js?v=20260922-3"></script>
-<script src="/seed-09.js?v=20260922-3"></script>
-<script src="/seed-10.js?v=20260922-3"></script>
-<script src="/seed-11.js?v=20260922-3"></script>
-<script src="/app-01.js?v=20260922-3"></script>
-<script src="/app-02.js?v=20260922-3"></script>
-<script src="/app-03.js?v=20260922-3"></script>
-<script src="/meetings.js?v=20260922-3"></script>
-<script src="/cloud.js?v=20260922-3"></script>
-<script src="/manager.js?v=20260922-3"></script>
-<script src="/dealer-management.js?v=20260922-3"></script>
-<script src="/daily-report.js?v=20260922-3"></script>
+<script src="/supabase-config.js?v=20260922-4"></script>
+<script src="/seed-01.js?v=20260922-4"></script>
+<script src="/seed-02.js?v=20260922-4"></script>
+<script src="/seed-03.js?v=20260922-4"></script>
+<script src="/seed-04.js?v=20260922-4"></script>
+<script src="/seed-05.js?v=20260922-4"></script>
+<script src="/seed-06.js?v=20260922-4"></script>
+<script src="/seed-07.js?v=20260922-4"></script>
+<script src="/seed-08.js?v=20260922-4"></script>
+<script src="/seed-09.js?v=20260922-4"></script>
+<script src="/seed-10.js?v=20260922-4"></script>
+<script src="/seed-11.js?v=20260922-4"></script>
+<script src="/app-01.js?v=20260922-4"></script>
+<script src="/app-02.js?v=20260922-4"></script>
+<script src="/app-03.js?v=20260922-4"></script>
+<script src="/meetings.js?v=20260922-4"></script>
+<script src="/cloud.js?v=20260922-4"></script>
+<script src="/manager.js?v=20260922-4"></script>
+<script src="/dealer-management.js?v=20260922-4"></script>
+<script src="/daily-report.js?v=20260922-4"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
