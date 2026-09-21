@@ -4,6 +4,7 @@ let cloudSyncTimer=null;
 let cloudSyncInProgress=false;
 let cloudHydrating=false;
 let teamContext={organizationId:null,organizationName:null,joinCode:null,role:null};
+let teamProfilesById=new Map();
 
 function updateCloudUi(message){
   const btn=document.getElementById('cloudAccountBtn');
@@ -420,14 +421,19 @@ async function loadStateFromCloud(){
   try{
     updateCloudUi('Buluttaki ekip verileri yükleniyor…');
 
-    const [dRes,vRes,pRes,mRes,sRes]=await Promise.all([
+    let meetingQuery=supabaseClient.from('meeting_notes').select('*').order('created_at',{ascending:false});
+    if(teamContext.role!=='MANAGER') meetingQuery=meetingQuery.eq('user_id',cloudUser.id);
+
+    const [dRes,vRes,pRes,mRes,sRes,profilesRes]=await Promise.all([
       supabaseClient.from('dealers').select('*').order('name'),
       supabaseClient.from('visits').select('*').order('visit_date',{ascending:false}),
       supabaseClient.from('payment_promises').select('*').order('promise_date'),
-      supabaseClient.from('meeting_notes').select('*').order('created_at',{ascending:false}),
-      supabaseClient.from('user_settings').select('*').eq('user_id',cloudUser.id).maybeSingle()
+      meetingQuery,
+      supabaseClient.from('user_settings').select('*').eq('user_id',cloudUser.id).maybeSingle(),
+      supabaseClient.from('profiles').select('user_id,username,full_name,email')
     ]);
-    for(const r of [dRes,vRes,pRes,mRes,sRes]) if(r.error) throw r.error;
+    for(const r of [dRes,vRes,pRes,mRes,sRes,profilesRes]) if(r.error) throw r.error;
+    teamProfilesById=new Map((profilesRes.data||[]).map(p=>[p.user_id,p]));
 
     // Aynı dealer id birden fazla kullanıcı altında eski kopya olarak varsa,
     // organization kayıtlarından en güncel olanı kullan.
@@ -459,11 +465,12 @@ async function loadStateFromCloud(){
       _ownerUserId:p.user_id,_actorUserId:p.actor_user_id||p.user_id
     }));
 
-    state.meetingNotes=(mRes.data||[]).map(m=>({
-      id:m.id,title:m.title,note:m.note||'',meetingDate:m.meeting_date||'',
-      status:m.status||'open',createdAt:m.created_at,
-      _ownerUserId:m.user_id,_actorUserId:m.actor_user_id||m.user_id
-    }));
+    state.meetingNotes=(mRes.data||[]).map(m=>{
+      const actorId=m.actor_user_id||m.user_id;
+      const profile=teamProfilesById.get(actorId)||{};
+      return {id:m.id,title:m.title,note:m.note||'',meetingDate:m.meeting_date||'',status:m.status||'open',createdAt:m.created_at,
+        _ownerUserId:m.user_id,_actorUserId:actorId,_actorName:profile.full_name||profile.username||profile.email||'Kullanıcı',_actorUsername:profile.username||''};
+    });
 
     const s=sRes.data;
     if(s){
