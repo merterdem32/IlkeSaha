@@ -78,8 +78,14 @@ function openCloudAccount(){
   cloudDialog.showModal();
 }
 
+function normalizeLoginIdentity(value){
+  const raw=String(value||'').trim().toLowerCase();
+  if(!raw)return '';
+  return raw.includes('@') ? raw : raw+'@login.ilkesaha.local';
+}
+
 async function cloudSignUp(){
-  const email=cloudEmail.value.trim();
+  const email=normalizeLoginIdentity(cloudEmail.value);
   const password=cloudPassword.value;
   if(!email||password.length<6){alert('E-posta ve en az 6 karakterli parola gir.');return}
   const {data,error}=await supabaseClient.auth.signUp({
@@ -99,7 +105,7 @@ async function cloudSignUp(){
 }
 
 async function cloudResendConfirmation(){
-  const email=cloudEmail.value.trim();
+  const email=normalizeLoginIdentity(cloudEmail.value);
   if(!email){alert('Önce e-posta adresini gir.');return}
   const {error}=await supabaseClient.auth.resend({
     type:'signup',
@@ -111,7 +117,7 @@ async function cloudResendConfirmation(){
 }
 
 async function cloudSignIn(){
-  const email=cloudEmail.value.trim();
+  const email=normalizeLoginIdentity(cloudEmail.value);
   const password=cloudPassword.value;
   if(!email||!password){alert('E-posta ve parola gir.');return}
   const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
@@ -496,3 +502,36 @@ async function joinExistingOrganization(){
 }
 
 window.addEventListener('load',()=>initCloud());
+
+
+async function managerCreateTeamUser(){
+  if(!cloudUser||!supabaseClient){alert('Önce giriş yap.');return}
+
+  const username=(document.getElementById('newTeamUsername')?.value||'').trim().toLowerCase();
+  const fullName=(document.getElementById('newTeamFullName')?.value||'').trim();
+  const role=document.getElementById('newTeamRole')?.value||'FIELD_STAFF';
+  const password=document.getElementById('newTeamPassword')?.value||'';
+
+  if(!username||!password){alert('Kullanıcı adı ve şifre gerekli.');return}
+
+  const {data,error}=await supabaseClient.functions.invoke('create-team-user',{
+    body:{username,password,role,fullName}
+  });
+
+  if(error){
+    alert('Kullanıcı oluşturulamadı: '+(error.message||error));
+    return;
+  }
+  if(!data?.ok){
+    alert('Kullanıcı oluşturulamadı: '+(data?.error||'Bilinmeyen hata'));
+    return;
+  }
+
+  document.getElementById('newTeamUsername').value='';
+  document.getElementById('newTeamFullName').value='';
+  document.getElementById('newTeamPassword').value='';
+  document.getElementById('newTeamRole').value='FIELD_STAFF';
+
+  alert(data.username+' kullanıcısı oluşturuldu.');
+  if(typeof renderManagementDashboard==='function') await renderManagementDashboard();
+}
