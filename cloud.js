@@ -19,6 +19,7 @@ function updateCloudUi(message){
   applyRoleUi();
   if(cloudUser && teamContext.organizationId){
     setTimeout(()=>refreshBootstrapAdminBox(),0);
+    setTimeout(()=>refreshSaha1MigrationBox(),0);
   }
 }
 
@@ -593,4 +594,53 @@ async function createFirstAdmin(){
   alert('Admin hesabı oluşturuldu. Kullanıcı adı: '+data.username);
   document.getElementById('bootstrapAdminPassword').value='';
   await refreshBootstrapAdminBox();
+}
+
+
+async function refreshSaha1MigrationBox(){
+  const box=document.getElementById('migrateToSaha1Box');
+  if(!box||!cloudUser||!supabaseClient||!teamContext.organizationId)return;
+
+  try{
+    const {data:profile}=await supabaseClient
+      .from('profiles')
+      .select('username')
+      .eq('user_id',cloudUser.id)
+      .maybeSingle();
+
+    const {data:existingSaha1}=await supabaseClient
+      .from('profiles')
+      .select('user_id')
+      .ilike('username','saha1')
+      .maybeSingle();
+
+    // Sadece eski e-posta hesabında ve saha1 henüz yoksa göster.
+    box.style.display=(!profile?.username && !existingSaha1)?'':'none';
+  }catch(err){
+    console.error('saha1 migration check failed',err);
+    box.style.display='none';
+  }
+}
+
+async function migrateCurrentUserToSaha1(){
+  const password=document.getElementById('saha1MigrationPassword')?.value||'';
+  if(password.length<8){alert('saha1 şifresi en az 8 karakter olmalı.');return}
+
+  if(!confirm('Mevcut saha verilerin saha1 hesabına taşınacak. İşlem öncesi bulut yedeği alınacak ve eski hesabın silinmeyecek. Devam edilsin mi?')) return;
+
+  const {data,error}=await supabaseClient.functions.invoke('migrate-current-user-to-saha1',{
+    body:{password,fullName:'Mert'}
+  });
+
+  if(error){
+    alert('Taşıma başarısız: '+(error.message||error));
+    return;
+  }
+  if(!data?.ok){
+    alert('Taşıma başarısız: '+(data?.error||'Bilinmeyen hata'));
+    return;
+  }
+
+  alert('Taşıma tamamlandı. Şimdi çıkış yapıp kullanıcı adı saha1 ve belirlediğin şifreyle giriş yap.');
+  await cloudSignOut();
 }
