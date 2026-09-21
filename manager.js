@@ -102,6 +102,7 @@ async function renderManagementDashboard(){
       perfList.innerHTML=rows.length?rows.join(''):'<div class="muted">Aktif saha personeli yok.</div>';
     }
 
+    populateManagerStaffFilters();
     setTimeout(()=>prepareManagerRouteControls(),0);
 
     const actList=document.getElementById('managerActivityList');
@@ -439,4 +440,30 @@ async function managerFocusStaffRoute(userId){
   sel.value=userId;
   await loadManagerRoute();
   document.getElementById('managerRouteSummary')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+
+function populateManagerStaffFilters(){
+  if(teamContext?.role!=='MANAGER')return;
+  const fieldMembers=managerDirectoryCache.members.filter(m=>m.role==='FIELD_STAFF'&&m.is_active!==false);
+
+  const options=['<option value="all">Tüm personel</option>'].concat(fieldMembers.map(m=>{
+    const p=managerDirectoryCache.profiles.get(m.user_id)||{};
+    const label=p.full_name||p.username||p.email||m.user_id;
+    return '<option value="'+esc(m.user_id)+'">'+esc(label)+(p.username?' ('+esc(p.username)+')':'')+'</option>';
+  })).join('');
+
+  const dealerFilter=document.getElementById('managerDealerStaffFilter');
+  const paymentFilter=document.getElementById('managerPaymentStaffFilter');
+
+  if(dealerFilter){
+    const current=dealerFilter.value||'all';
+    dealerFilter.innerHTML=options;
+    if([...dealerFilter.options].some(o=>o.value===current)) dealerFilter.value=current;
+  }
+  if(paymentFilter){
+    const current=paymentFilter.value||'all';
+    paymentFilter.innerHTML=options;
+    if([...paymentFilter.options].some(o=>o.value===current)) paymentFilter.value=current;
+  }
 }
