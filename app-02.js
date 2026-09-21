@@ -65,7 +65,21 @@ function savePayment(){
 }
 
 function renderPayments(){
-  paymentRows.innerHTML=state.payments.sort((a,b)=>a.date.localeCompare(b.date)).map(p=>{
+  const isManager=typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER';
+  const staffFilter=isManager?(document.getElementById('managerPaymentStaffFilter')?.value||'all'):'all';
+  const statusFilter=isManager?(document.getElementById('managerPaymentStatusFilter')?.value||'all'):'all';
+
+  const rows=state.payments.filter(p=>{
+    const actor=p._actorUserId||p._ownerUserId;
+    if(staffFilter!=='all'&&actor!==staffFilter)return false;
+    const s=paymentStatus(p);
+    if(statusFilter==='pending' && ['Ödendi','İptal','Gecikti'].includes(s.text)) return false;
+    if(statusFilter==='overdue' && s.text!=='Gecikti') return false;
+    if(statusFilter==='paid' && s.text!=='Ödendi') return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+
+  paymentRows.innerHTML=rows.map(p=>{
     const d=state.dealers.find(x=>x.id===p.dealerId), s=paymentStatus(p);
     return '<tr><td><strong>'+esc(d?.name||'Bilinmeyen')+'</strong></td><td>'+fmtMoney(p.amount)+'</td><td>'+p.date+'</td>'+
       '<td><span class="badge '+s.cls+'">'+s.text+'</span></td><td>'+esc(p.note||'-')+'</td>'+
