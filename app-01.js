@@ -111,7 +111,16 @@ function renderDashboard(){
 
 function renderDealers(){
   const q=(dealerSearch?.value||'').toLowerCase();
-  const rows=state.dealers.filter(d=>[d.name,d.contact,d.district,d.address].join(' ').toLowerCase().includes(q));
+  const managerFilter=(typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER')
+    ? (document.getElementById('managerDealerStaffFilter')?.value||'all')
+    : 'all';
+  const rows=state.dealers.filter(d=>{
+    const textOk=[d.name,d.contact,d.district,d.address].join(' ').toLowerCase().includes(q);
+    if(!textOk)return false;
+    if(managerFilter==='all')return true;
+    const lv=lastVisitForDealer(d.id);
+    return (lv?._actorUserId||lv?._ownerUserId)===managerFilter;
+  });
   dealerRows.innerHTML=rows.map(d=>{
     const lv=lastVisitForDealer(d.id);
     return '<tr><td><strong>'+esc(d.name)+'</strong><br><span class="muted">'+esc(d.district||'')+'</span></td>'+
