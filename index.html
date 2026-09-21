@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260921-17"/>
+  <link rel="stylesheet" href="/styles.css?v=20260921-18"/>
 </head>
 <body>
 <header>
@@ -48,6 +48,9 @@
         <div class="toolbar">
           <button class="btn btn-primary" onclick="openDealerModal()">+ Bayi Ekle</button>
           <input id="dealerSearch" placeholder="Bayi, yetkili, ilçe ara..." style="max-width:340px" oninput="renderDealers()">
+          <select id="managerDealerStaffFilter" class="manager-only-col" style="max-width:220px" onchange="renderDealers()">
+            <option value="all">Tüm personel</option>
+          </select>
         </div>
         <div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Yetkili</th><th>Adres</th><th>Konum</th><th>Son ziyaret</th><th class="manager-only-col">Son ziyaret eden</th><th></th></tr></thead><tbody id="dealerRows"></tbody></table></div>
       </div>
@@ -86,7 +89,7 @@
         <div class="card span-12"><div id="routeMap"></div></div>
       </div>
     </section>
-    <section id="payments" class="section"><div class="card"><div class="toolbar"><button class="btn btn-primary" onclick="openPaymentModal()">+ Ödeme Sözü Ekle</button></div><div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Tutar</th><th>Söz tarihi</th><th>Durum</th><th>Açıklama</th><th class="manager-only-col">Kaydeden</th><th></th></tr></thead><tbody id="paymentRows"></tbody></table></div></div></section>
+    <section id="payments" class="section"><div class="card"><div class="toolbar"><button class="btn btn-primary" onclick="openPaymentModal()">+ Ödeme Sözü Ekle</button><select id="managerPaymentStaffFilter" class="manager-only-col" style="max-width:220px" onchange="renderPayments()"><option value="all">Tüm personel</option></select><select id="managerPaymentStatusFilter" class="manager-only-col" style="max-width:180px" onchange="renderPayments()"><option value="all">Tüm durumlar</option><option value="pending">Bekleyen</option><option value="overdue">Geciken</option><option value="paid">Ödendi</option></select></div><div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Tutar</th><th>Söz tarihi</th><th>Durum</th><th>Açıklama</th><th class="manager-only-col">Kaydeden</th><th></th></tr></thead><tbody id="paymentRows"></tbody></table></div></div></section>
     <section id="meetings" class="section">
       <div class="grid">
         <div class="card span-4">
@@ -303,24 +306,24 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260921-17"></script>
-<script src="/seed-01.js?v=20260921-17"></script>
-<script src="/seed-02.js?v=20260921-17"></script>
-<script src="/seed-03.js?v=20260921-17"></script>
-<script src="/seed-04.js?v=20260921-17"></script>
-<script src="/seed-05.js?v=20260921-17"></script>
-<script src="/seed-06.js?v=20260921-17"></script>
-<script src="/seed-07.js?v=20260921-17"></script>
-<script src="/seed-08.js?v=20260921-17"></script>
-<script src="/seed-09.js?v=20260921-17"></script>
-<script src="/seed-10.js?v=20260921-17"></script>
-<script src="/seed-11.js?v=20260921-17"></script>
-<script src="/app-01.js?v=20260921-17"></script>
-<script src="/app-02.js?v=20260921-17"></script>
-<script src="/app-03.js?v=20260921-17"></script>
-<script src="/meetings.js?v=20260921-17"></script>
-<script src="/cloud.js?v=20260921-17"></script>
-<script src="/manager.js?v=20260921-17"></script>
+<script src="/supabase-config.js?v=20260921-18"></script>
+<script src="/seed-01.js?v=20260921-18"></script>
+<script src="/seed-02.js?v=20260921-18"></script>
+<script src="/seed-03.js?v=20260921-18"></script>
+<script src="/seed-04.js?v=20260921-18"></script>
+<script src="/seed-05.js?v=20260921-18"></script>
+<script src="/seed-06.js?v=20260921-18"></script>
+<script src="/seed-07.js?v=20260921-18"></script>
+<script src="/seed-08.js?v=20260921-18"></script>
+<script src="/seed-09.js?v=20260921-18"></script>
+<script src="/seed-10.js?v=20260921-18"></script>
+<script src="/seed-11.js?v=20260921-18"></script>
+<script src="/app-01.js?v=20260921-18"></script>
+<script src="/app-02.js?v=20260921-18"></script>
+<script src="/app-03.js?v=20260921-18"></script>
+<script src="/meetings.js?v=20260921-18"></script>
+<script src="/cloud.js?v=20260921-18"></script>
+<script src="/manager.js?v=20260921-18"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
