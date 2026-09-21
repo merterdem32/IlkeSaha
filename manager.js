@@ -64,6 +64,7 @@ async function renderManagementDashboard(){
             '<span class="badge '+(m.role==='MANAGER'?'b-info':'b-ok')+'">'+m.role+'</span>'+
           '</div>'+
           '<div class="muted" style="margin-top:8px">Bugünkü ziyaret: <strong>'+personVisits.length+'</strong></div>'+
+          '<div class="toolbar" style="margin:10px 0 0"><button class="btn btn-ghost" onclick="openTeamUserEditor(\''+m.user_id+'\')">Kullanıcıyı Düzenle</button></div>'+
         '</div>';
       }).join(''):'<div class="muted">Aktif ekip üyesi yok.</div>';
     }
@@ -101,7 +102,8 @@ function formatActivityAction(action){
     DEALER_UPDATED:'Bayi bilgisi güncellendi',
     DEALER_DEACTIVATED:'Bayi rut dışı bırakıldı',
     MEETING_NOTE_ADDED:'Toplantı notu eklendi',
-    MEETING_NOTE_DONE:'Toplantı notu tamamlandı'
+    MEETING_NOTE_DONE:'Toplantı notu tamamlandı',
+    UPDATE_USER:'Kullanıcı bilgileri güncellendi'
   };
   return map[action]||action;
 }
@@ -127,3 +129,49 @@ document.addEventListener('DOMContentLoaded',()=>{
   const btn=document.getElementById('managementNavBtn');
   if(btn) btn.addEventListener('click',()=>setTimeout(()=>renderManagementDashboard(),50));
 });
+
+
+let managerDirectoryCache={members:[],profiles:new Map()};
+
+async function loadManagerDirectory(){
+  const [mRes,pRes]=await Promise.all([
+    supabaseClient.from('organization_members').select('user_id,role,is_active,created_at').eq('organization_id',teamContext.organizationId),
+    supabaseClient.from('profiles').select('user_id,username,full_name,email')
+  ]);
+  if(mRes.error) throw mRes.error;
+  if(pRes.error) throw pRes.error;
+  managerDirectoryCache={members:mRes.data||[],profiles:new Map((pRes.data||[]).map(p=>[p.user_id,p]))};
+}
+
+async function openTeamUserEditor(userId){
+  try{
+    await loadManagerDirectory();
+    const m=managerDirectoryCache.members.find(x=>x.user_id===userId);
+    const p=managerDirectoryCache.profiles.get(userId)||{};
+    if(!m){alert('Kullanıcı bulunamadı.');return}
+    editTeamUserId.value=userId;
+    editTeamUsername.textContent=p.username||p.email||userId;
+    editTeamFullName.value=p.full_name||'';
+    editTeamRole.value=m.role||'FIELD_STAFF';
+    editTeamPassword.value='';
+    editTeamActive.checked=m.is_active!==false;
+    editTeamUserDialog.showModal();
+  }catch(err){ alert('Kullanıcı bilgileri açılamadı: '+(err.message||err)); }
+}
+
+async function saveTeamUserEdit(){
+  const body={
+    userId:editTeamUserId.value,
+    fullName:editTeamFullName.value.trim(),
+    role:editTeamRole.value,
+    password:editTeamPassword.value,
+    isActive:editTeamActive.checked
+  };
+  if(body.password && body.password.length<8){alert('Yeni şifre en az 8 karakter olmalı.');return}
+  const {data,error}=await supabaseClient.functions.invoke('update-team-user',{body});
+  if(error){alert('Kullanıcı güncellenemedi: '+(error.message||error));return}
+  if(!data?.ok){alert('Kullanıcı güncellenemedi: '+(data?.error||'Bilinmeyen hata'));return}
+  editTeamUserDialog.close();
+  await renderManagementDashboard();
+  alert('Kullanıcı bilgileri güncellendi.');
+}
