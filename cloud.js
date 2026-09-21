@@ -37,6 +37,9 @@ function applyRoleUi(){
   if(routeNav) routeNav.style.display=isManager?'none':'';
   if(settingsNav) settingsNav.style.display=isManager?'none':'';
   if(managementNav) managementNav.style.display=isManager?'':'none';
+  if(isManager && typeof populateManagerStaffFilters==='function'){
+    setTimeout(()=>populateManagerStaffFilters(),0);
+  }
 
   document.querySelectorAll('.manager-only-col').forEach(el=>{
     el.style.display=isManager?'':'none';
