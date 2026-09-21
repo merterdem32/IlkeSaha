@@ -69,6 +69,16 @@ async function renderManagementDashboard(){
       }).join(''):'<div class="muted">Aktif ekip üyesi yok.</div>';
     }
 
+    const staffListEl=document.getElementById('managerStaffList');
+    if(staffListEl && !document.getElementById('managerRouteNotice')){
+      const notice=document.createElement('div');
+      notice.id='managerRouteNotice';
+      notice.className='note';
+      notice.style.marginTop='12px';
+      notice.innerHTML='<strong>Rut Yönetimi</strong><br><span class="muted">Bir sonraki aşamada saha1 / saha2 / saha3 seçerek personelin günlük rutunu görüntüleme ve düzenleme burada devreye alınacak. Mevcut saha personelinin kişisel Rut Planı ekranı yöneticiye artık gösterilmiyor.</span>';
+      staffListEl.parentElement.appendChild(notice);
+    }
+
     const actList=document.getElementById('managerActivityList');
     if(actList){
       actList.innerHTML=activity.length?activity.map(a=>{
