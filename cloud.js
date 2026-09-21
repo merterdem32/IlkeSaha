@@ -402,6 +402,7 @@ async function syncStateToCloud(initial=false){
           dealer_id:p.dealerId,amount:Number(p.amount||0),
           promise_date:p.date,note:p.note||null,
           status:p.status||'pending',paid_at:p.paidAt||null,
+          created_at:p.createdAt||new Date().toISOString(),
           updated_at:new Date().toISOString()
         }));
         const {error}=await supabaseClient.from('payment_promises').insert(rows);
@@ -504,7 +505,7 @@ async function loadStateFromCloud(){
     state.payments=(pRes.data||[]).map(p=>({
       id:p.id,dealerId:p.dealer_id,amount:Number(p.amount),
       date:p.promise_date,note:p.note||'',status:p.status||'pending',
-      paidAt:p.paid_at||null,
+      paidAt:p.paid_at||null,createdAt:p.created_at||p.updated_at||null,
       _ownerUserId:p.user_id,_actorUserId:p.actor_user_id||p.user_id
     }));
 
