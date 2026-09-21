@@ -6,13 +6,16 @@ function saveDealer(){
     district:dealerDistrict.value.trim(),address:dealerAddress.value.trim(),
     lat:dealerLat.value===''?null:Number(dealerLat.value),lng:dealerLng.value===''?null:Number(dealerLng.value),
     locationStatus:(dealerLat.value===''||dealerLng.value==='')?'unset':dealerLocationStatus.value,frequency:Number(dealerFrequency.value||14),
-    priority:Number(dealerPriority.value||1),generalNote:dealerGeneralNote.value.trim(),isActive:true
+    priority:Number(dealerPriority.value||1),generalNote:dealerGeneralNote.value.trim(),isActive:true,
+    assignedUserId:document.getElementById('dealerAssignedUser')?.value||
+      ((typeof teamContext!=='undefined'&&teamContext?.role==='FIELD_STAFF')?cloudUser?.id:null)
   };
   const i=state.dealers.findIndex(x=>x.id===obj.id);
   if(i>=0){
     const old=state.dealers[i];
     obj.plannedWeek=old.plannedWeek; obj.plannedDay=old.plannedDay; obj.plannedOrder=old.plannedOrder;
     obj.plannedStage=old.plannedStage; obj.originalRouteLogic=old.originalRouteLogic; obj.departure=old.departure; obj.isActive=old.isActive!==false;
+    if(!obj.assignedUserId)obj.assignedUserId=old.assignedUserId||null;
     state.dealers[i]=obj;
   }else state.dealers.push(obj);
   dealerDialog.close(); persist(); if(typeof logActivity==='function') logActivity('DEALER_UPDATED','DEALER',obj.id,{name:obj.name});
@@ -27,6 +30,7 @@ function showDealer(id){
     '<div><button class="btn btn-ghost" onclick="detailDialog.close();openDealerModal(\''+id+'\')">Düzenle</button></div></div>'+
     '<div class="item"><strong>Adres</strong>'+esc(d.address||'-')+'<br><span class="badge '+(d.locationStatus==='verified'?'b-ok':d.locationStatus==='estimated'?'b-warn':'b-info')+'">'+(d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini konum':'Konum henüz işaretlenmedi')+'</span></div>'+
     (d.plannedWeek?'<div class="item"><strong>Mevcut rut planındaki yeri</strong>'+esc(d.plannedWeek)+' • '+esc(d.plannedDay)+' • '+d.plannedOrder+'. sıra '+(d.plannedStage?'• '+esc(d.plannedStage):'')+'</div>':'')+
+    '<div class="item"><strong>Sorumlu satışçı</strong>'+esc(typeof salespersonLabel==='function'?salespersonLabel(d.assignedUserId):(d.assignedUserId||'Atanmamış'))+'</div>'+
     '<div class="item"><strong>Genel not</strong>'+esc(d.generalNote||'-')+'</div>'+
     '<div class="toolbar"><button class="btn btn-primary" onclick="detailDialog.close();openVisitModal(\''+id+'\')">+ Ziyaret Kaydı</button>'+
     '<button class="btn btn-accent" onclick="detailDialog.close();openPaymentModal(\''+id+'\')">+ Ödeme Sözü</button></div>'+
@@ -51,7 +55,9 @@ function saveVisit(){
 }
 
 function openPaymentModal(id){
-  paymentDealer.innerHTML=state.dealers.map(d=>'<option value="'+d.id+'">'+esc(d.name)+'</option>').join('');
+  paymentDealer.innerHTML=state.dealers
+    .filter(d=>typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))
+    .map(d=>'<option value="'+d.id+'">'+esc(d.name)+'</option>').join('');
   if(id)paymentDealer.value=id;
   paymentAmount.value=''; paymentDate.value=todayStr(); paymentNote.value=''; paymentDialog.showModal();
 }
@@ -105,7 +111,8 @@ function markRouteDraftChanged(){
 function loadOriginalPlan(){
   const week=planWeek.value, day=planDay.value;
   const planned=state.dealers
-    .filter(d=>d.plannedWeek===week && d.plannedDay===day && d.isActive!==false)
+    .filter(d=>d.plannedWeek===week && d.plannedDay===day && d.isActive!==false &&
+      (typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d)))
     .sort((a,b)=>(a.plannedOrder||999)-(b.plannedOrder||999));
   if(!planned.length){alert('Bu hafta/gün için aktif bayi kaydı bulunamadı.');return}
   state.todayRoute=planned.map(d=>d.id);
@@ -212,7 +219,8 @@ function buildRoute(){
   if(!dayDealers.length){
     // Henüz gün yüklenmediyse seçili hafta/günü kullan.
     dayDealers=state.dealers
-      .filter(d=>d.plannedWeek===planWeek.value && d.plannedDay===planDay.value && d.isActive!==false)
+      .filter(d=>d.plannedWeek===planWeek.value && d.plannedDay===planDay.value && d.isActive!==false &&
+        (typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d)))
       .sort((a,b)=>(a.plannedOrder||999)-(b.plannedOrder||999));
   }
 
