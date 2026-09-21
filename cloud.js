@@ -633,7 +633,22 @@ async function migrateCurrentUserToSaha1(){
   });
 
   if(error){
-    alert('Taşıma başarısız: '+(error.message||error));
+    let detail=error.message||String(error);
+    try{
+      if(error.context){
+        const raw=await error.context.text();
+        if(raw){
+          try{
+            const parsed=JSON.parse(raw);
+            detail=parsed.error||parsed.message||raw;
+          }catch{
+            detail=raw;
+          }
+        }
+      }
+    }catch(_){}
+    console.error('saha1 migration error',error,detail);
+    alert('Taşıma başarısız: '+detail);
     return;
   }
   if(!data?.ok){
