@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260921-4"/>
+  <link rel="stylesheet" href="/styles.css?v=20260921-5"/>
 </head>
 <body>
 <header>
@@ -200,6 +200,13 @@
       <span id="teamJoinCode">-</span>
       <div class="muted" style="margin-top:6px">Bu kod artık normal giriş için kullanılmaz; ekip bağlantısı için yedek yöntemdir.</div>
     </div>
+    <div id="migrateToSaha1Box" class="item" style="display:none">
+      <strong>Bu hesabı saha1'e taşı</strong>
+      <div class="muted" style="margin:6px 0 10px">Mevcut bayi, koordinat, ziyaret, ödeme ve toplantı verilerin korunarak yeni saha1 hesabına taşınır.</div>
+      <label>saha1 şifresi</label>
+      <input id="saha1MigrationPassword" type="password" autocomplete="new-password" placeholder="En az 8 karakter">
+      <button class="btn btn-accent" style="margin-top:10px;width:100%" onclick="migrateCurrentUserToSaha1()">Verilerimi saha1 hesabına taşı</button>
+    </div>
     <div id="bootstrapAdminBox" class="item" style="display:none">
       <strong>İlk Yönetici Hesabını Oluştur</strong>
       <div class="muted" style="margin:6px 0 10px">Bu bölüm yalnızca ilk admin hesabı oluşturulana kadar görünür.</div>
@@ -251,23 +258,23 @@
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/supabase-config.js?v=20260921-4"></script>
-<script src="/seed-01.js?v=20260921-4"></script>
-<script src="/seed-02.js?v=20260921-4"></script>
-<script src="/seed-03.js?v=20260921-4"></script>
-<script src="/seed-04.js?v=20260921-4"></script>
-<script src="/seed-05.js?v=20260921-4"></script>
-<script src="/seed-06.js?v=20260921-4"></script>
-<script src="/seed-07.js?v=20260921-4"></script>
-<script src="/seed-08.js?v=20260921-4"></script>
-<script src="/seed-09.js?v=20260921-4"></script>
-<script src="/seed-10.js?v=20260921-4"></script>
-<script src="/seed-11.js?v=20260921-4"></script>
-<script src="/app-01.js?v=20260921-4"></script>
-<script src="/app-02.js?v=20260921-4"></script>
-<script src="/app-03.js?v=20260921-4"></script>
-<script src="/meetings.js?v=20260921-4"></script>
-<script src="/cloud.js?v=20260921-4"></script>
+<script src="/supabase-config.js?v=20260921-5"></script>
+<script src="/seed-01.js?v=20260921-5"></script>
+<script src="/seed-02.js?v=20260921-5"></script>
+<script src="/seed-03.js?v=20260921-5"></script>
+<script src="/seed-04.js?v=20260921-5"></script>
+<script src="/seed-05.js?v=20260921-5"></script>
+<script src="/seed-06.js?v=20260921-5"></script>
+<script src="/seed-07.js?v=20260921-5"></script>
+<script src="/seed-08.js?v=20260921-5"></script>
+<script src="/seed-09.js?v=20260921-5"></script>
+<script src="/seed-10.js?v=20260921-5"></script>
+<script src="/seed-11.js?v=20260921-5"></script>
+<script src="/app-01.js?v=20260921-5"></script>
+<script src="/app-02.js?v=20260921-5"></script>
+<script src="/app-03.js?v=20260921-5"></script>
+<script src="/meetings.js?v=20260921-5"></script>
+<script src="/cloud.js?v=20260921-5"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
