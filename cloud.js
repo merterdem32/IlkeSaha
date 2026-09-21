@@ -786,7 +786,6 @@ async function loadPersonalDailyRouteFromCloud(){
     if(stopsErr)return;
 
     state.todayRoute=(stops||[]).map(s=>s.dealer_id);
-    const status=document.getElementById('routePublishStatus');
     if(status) status.textContent='Bugünkü paylaşılmış rut yüklendi.';
   }catch(err){
     console.warn('Daily route load skipped',err);
