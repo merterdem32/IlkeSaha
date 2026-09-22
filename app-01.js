@@ -160,7 +160,7 @@ function renderMap(){
   if(pts.length>1)map.fitBounds(pts,{padding:[30,30]});
 }
 
-async async function openDealerModal(id){
+async function openDealerModal(id){
   const d=id?state.dealers.find(x=>x.id===id):null;
   dealerId.value=d?.id||'';
   dealerModalTitle.textContent=d?'Bayi Düzenle':'Bayi Ekle';
