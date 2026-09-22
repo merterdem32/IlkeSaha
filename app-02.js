@@ -1,10 +1,28 @@
+function clearDealerCoordinates(){
+  dealerLat.value='';
+  dealerLng.value='';
+  dealerLocationStatus.value='unset';
+  const hint=document.getElementById('dealerMapPasteHint');
+  if(hint) hint.textContent='Koordinatlar temizlendi. Yeni koordinat girebilir veya haritadan seçebilirsin.';
+  if(typeof miniMarker!=='undefined'&&miniMarker&&typeof miniMap!=='undefined'&&miniMap){
+    try{ miniMap.removeLayer(miniMarker); }catch(_){}
+    miniMarker=null;
+  }
+}
+
 function saveDealer(){
   if(!dealerName.value.trim()){alert('Bayi adı gerekli.');return}
+  const latRaw=dealerLat.value.trim();
+  const lngRaw=dealerLng.value.trim();
+  if((latRaw!==''||lngRaw!=='') && !isValidDealerCoordinate(latRaw,lngRaw)){
+    alert('Koordinat geçersiz. Enlem -90 ile 90, boylam -180 ile 180 arasında olmalı. İstersen “Koordinatları Temizle” ile sıfırlayıp yeniden girebilirsin.');
+    return;
+  }
   const obj={
     id:dealerId.value||crypto.randomUUID(),
     name:dealerName.value.trim(),contact:dealerContact.value.trim(),phone:dealerPhone.value.trim(),
     district:dealerDistrict.value.trim(),address:dealerAddress.value.trim(),
-    lat:dealerLat.value===''?null:Number(dealerLat.value),lng:dealerLng.value===''?null:Number(dealerLng.value),
+    lat:latRaw===''?null:Number(latRaw),lng:lngRaw===''?null:Number(lngRaw),
     locationStatus:(dealerLat.value===''||dealerLng.value==='')?'unset':dealerLocationStatus.value,frequency:Number(dealerFrequency.value||14),
     priority:Number(dealerPriority.value||1),generalNote:dealerGeneralNote.value.trim(),isActive:true,
     assignedUserId:document.getElementById('dealerAssignedUser')?.value||
@@ -119,7 +137,7 @@ function loadOriginalPlan(){
   state.todayRoute=planned.map(d=>d.id);
   persist();
   markRouteDraftChanged();
-  const missing=planned.filter(d=>d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng)).length;
+  const missing=planned.filter(d=>!isValidDealerCoordinate(d.lat,d.lng)).length;
   routeSummary.innerHTML='Gönderdiğin plan yüklendi: <strong>'+planned.length+' bayi</strong>. '+
     (missing?'<span class="badge b-warn">'+missing+' bayinin konumu henüz işaretlenmedi</span>':'');
 }
@@ -128,11 +146,11 @@ function routeDistance(order){
   let km=0;
   let cur=state.home;
   for(const d of order){
-    if(d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng)) continue;
+    if(!isValidDealerCoordinate(d.lat,d.lng)) continue;
     km+=distanceKm(cur,d);
     cur=d;
   }
-  if(order.some(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng))){
+  if(order.some(d=>isValidDealerCoordinate(d.lat,d.lng))){
     km+=distanceKm(cur,state.home);
   }
   return km;
@@ -230,8 +248,8 @@ function buildRoute(){
     return;
   }
 
-  const located=dayDealers.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng));
-  const missing=dayDealers.filter(d=>d.lat===null||d.lng===null||!isFinite(d.lat)||!isFinite(d.lng));
+  const located=dayDealers.filter(d=>isValidDealerCoordinate(d.lat,d.lng));
+  const missing=dayDealers.filter(d=>!isValidDealerCoordinate(d.lat,d.lng));
 
   const optimized=optimizeDayRoute(located);
 
