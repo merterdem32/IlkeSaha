@@ -46,16 +46,49 @@ function initRouteMap(){
 function renderRouteMap(){
   if(!routeMap)return;
   routeMap.eachLayer(l=>{ if(!(l instanceof L.TileLayer)) routeMap.removeLayer(l); });
-  const points=[[state.home.lat,state.home.lng]];
-  L.marker(points[0]).addTo(routeMap).bindPopup('Ev');
-  state.todayRoute.map(id=>state.dealers.find(x=>x.id===id)).filter(d=>d&&isValidDealerCoordinate(d.lat,d.lng)).forEach((d,i)=>{
-    points.push([d.lat,d.lng]); L.marker([d.lat,d.lng]).addTo(routeMap).bindPopup((i+1)+'. '+esc(d.name));
+
+  const routeDealers=(state.todayRoute||[])
+    .map((id,index)=>({dealer:state.dealers.find(x=>x.id===id),routeIndex:index}))
+    .filter(x=>x.dealer);
+
+  const valid=routeDealers.filter(x=>isValidDealerCoordinate(x.dealer.lat,x.dealer.lng));
+  const missing=routeDealers.filter(x=>!isValidDealerCoordinate(x.dealer.lat,x.dealer.lng));
+
+  const homeOk=isValidDealerCoordinate(state.home?.lat,state.home?.lng);
+  const homePoint=homeOk?[Number(state.home.lat),Number(state.home.lng)]:[41.0082,28.9784];
+  const points=[homePoint];
+
+  L.marker(homePoint).addTo(routeMap).bindPopup('Ev / Başlangıç');
+
+  valid.forEach(({dealer:d,routeIndex})=>{
+    const lat=Number(d.lat), lng=Number(d.lng);
+    const icon=L.divIcon({
+      className:'',
+      html:'<div style="width:30px;height:30px;border-radius:50%;background:#e30613;color:white;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.28);display:grid;place-items:center;font-weight:800;font-size:13px">'+(routeIndex+1)+'</div>',
+      iconSize:[30,30],
+      iconAnchor:[15,15]
+    });
+    points.push([lat,lng]);
+    L.marker([lat,lng],{icon}).addTo(routeMap)
+      .bindPopup('<strong>'+(routeIndex+1)+'. '+esc(d.name)+'</strong><br>'+esc(d.district||''));
   });
+
   if(points.length>1){
-    points.push([state.home.lat,state.home.lng]);
-    routeLayer=L.polyline(points,{weight:4}).addTo(routeMap);
-    routeMap.fitBounds(points,{padding:[30,30]});
-  } else routeMap.setView([state.home.lat,state.home.lng],10);
+    points.push(homePoint);
+    routeLayer=L.polyline(points,{weight:4,color:'#e30613',opacity:.75}).addTo(routeMap);
+    routeMap.fitBounds(points,{padding:[40,40],maxZoom:15});
+  }else{
+    routeMap.setView(homePoint,10);
+  }
+
+  const info=document.getElementById('routeMapInfo');
+  if(info){
+    info.innerHTML='<strong>'+valid.length+'/'+routeDealers.length+' bayi haritada</strong>'+
+      (missing.length
+        ? ' • <span class="badge b-warn">'+missing.length+' konum eksik/geçersiz</span>'+
+          '<div class="muted" style="margin-top:6px">Haritada görünmeyen: '+missing.map(x=>esc(x.dealer.name)).join(', ')+'</div>'
+        : ' • <span class="badge b-ok">Tüm kayıtlı konumlar gösteriliyor</span>');
+  }
 }
 
 function initHomeMap(){
