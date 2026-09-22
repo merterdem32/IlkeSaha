@@ -1,7 +1,7 @@
 function renderRoute(){
   if(!state.todayRoute.length){routeSummary.textContent='Henüz hesaplanmadı.';routeList.innerHTML='';return}
   const ds=state.todayRoute.map(id=>state.dealers.find(x=>x.id===id)).filter(Boolean);
-  const located=ds.filter(d=>d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng));
+  const located=ds.filter(d=>isValidDealerCoordinate(d.lat,d.lng));
   let km=0,cur=state.home;
   located.forEach(d=>{km+=distanceKm(cur,d);cur=d});
   if(located.length) km+=distanceKm(cur,state.home);
@@ -48,7 +48,7 @@ function renderRouteMap(){
   routeMap.eachLayer(l=>{ if(!(l instanceof L.TileLayer)) routeMap.removeLayer(l); });
   const points=[[state.home.lat,state.home.lng]];
   L.marker(points[0]).addTo(routeMap).bindPopup('Ev');
-  state.todayRoute.map(id=>state.dealers.find(x=>x.id===id)).filter(d=>d&&d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).forEach((d,i)=>{
+  state.todayRoute.map(id=>state.dealers.find(x=>x.id===id)).filter(d=>d&&isValidDealerCoordinate(d.lat,d.lng)).forEach((d,i)=>{
     points.push([d.lat,d.lng]); L.marker([d.lat,d.lng]).addTo(routeMap).bindPopup((i+1)+'. '+esc(d.name));
   });
   if(points.length>1){
