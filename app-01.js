@@ -38,6 +38,8 @@ function daysSince(dateStr){
 }
 
 function isValidDealerCoordinate(lat,lng){
+  if(lat===null||lat===undefined||lng===null||lng===undefined)return false;
+  if(String(lat).trim()===''||String(lng).trim()==='')return false;
   const la=Number(lat), lo=Number(lng);
   return Number.isFinite(la)&&Number.isFinite(lo)&&la>=-90&&la<=90&&lo>=-180&&lo<=180;
 }
