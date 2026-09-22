@@ -37,6 +37,11 @@ function daysSince(dateStr){
   if(!dateStr)return 9999; return Math.floor((new Date()-new Date(dateStr))/86400000)
 }
 
+function isValidDealerCoordinate(lat,lng){
+  const la=Number(lat), lo=Number(lng);
+  return Number.isFinite(la)&&Number.isFinite(lo)&&la>=-90&&la<=90&&lo>=-180&&lo<=180;
+}
+
 function distanceKm(a,b){
   const R=6371, toRad=x=>x*Math.PI/180;
   const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
@@ -147,15 +152,15 @@ function renderMap(){
   mainMarkers.forEach(m=>map.removeLayer(m)); mainMarkers=[];
   const home=L.marker([state.home.lat,state.home.lng]).addTo(map).bindPopup('<strong>Ev</strong>');
   mainMarkers.push(home);
-  state.dealers.filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).forEach(d=>{
+  state.dealers.filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&isValidDealerCoordinate(d.lat,d.lng)).forEach(d=>{
     const m=L.marker([d.lat,d.lng]).addTo(map).bindPopup('<strong>'+esc(d.name)+'</strong><br>'+esc(d.district||'')+'<br>'+(d.locationStatus==='verified'?'Doğrulandı':'Tahmini'));
     mainMarkers.push(m);
   });
-  const pts=[[state.home.lat,state.home.lng],...state.dealers.filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&d.lat!==null&&d.lng!==null&&isFinite(d.lat)&&isFinite(d.lng)).map(d=>[d.lat,d.lng])];
+  const pts=[[state.home.lat,state.home.lng],...state.dealers.filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&isValidDealerCoordinate(d.lat,d.lng)).map(d=>[d.lat,d.lng])];
   if(pts.length>1)map.fitBounds(pts,{padding:[30,30]});
 }
 
-async function openDealerModal(id){
+async async function openDealerModal(id){
   const d=id?state.dealers.find(x=>x.id===id):null;
   dealerId.value=d?.id||'';
   dealerModalTitle.textContent=d?'Bayi Düzenle':'Bayi Ekle';
@@ -170,8 +175,17 @@ async function openDealerModal(id){
   dealerDialog.showModal();
   setTimeout(()=>{
     if(miniMap){miniMap.remove(); miniMap=null}
-    const hasCoord=dealerLat.value!==''&&dealerLng.value!=='';
-    const center=hasCoord?[Number(dealerLat.value),Number(dealerLng.value)]:[state.home.lat,state.home.lng];
+    const rawLat=dealerLat.value;
+    const rawLng=dealerLng.value;
+    const hasCoord=rawLat!==''&&rawLng!==''&&isValidDealerCoordinate(rawLat,rawLng);
+    const homeOk=isValidDealerCoordinate(state.home?.lat,state.home?.lng);
+    const center=hasCoord?[Number(rawLat),Number(rawLng)]:(homeOk?[Number(state.home.lat),Number(state.home.lng)]:[41.0082,28.9784]);
+
+    if((rawLat!==''||rawLng!=='')&&!hasCoord){
+      const hint=document.getElementById('dealerMapPasteHint');
+      if(hint) hint.textContent='Kayıtlı koordinat geçersiz. Enlem -90…90, boylam -180…180 aralığında olmalı. Aşağıdan doğru koordinatı girip kaydedebilirsin.';
+    }
+
     miniMap=L.map('dealerMiniMap').setView(center,13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(miniMap);
     miniMarker=hasCoord?L.marker(center).addTo(miniMap):null;
