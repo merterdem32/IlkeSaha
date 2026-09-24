@@ -109,6 +109,8 @@ async function previewDealerExcel(){
   }
 
   try{
+    window.__dealerExcelRows=[];
+    if(preview) preview.innerHTML='<div class="muted">Excel okunuyor…</div>';
     const data=await file.arrayBuffer();
     const wb=XLSX.read(data,{type:'array'});
     let parsed=[];
@@ -207,6 +209,7 @@ async function previewDealerExcel(){
       sample.map(x=>'<div class="item"><strong>'+esc(x.name)+'</strong>'+
         '<span class="muted">'+esc(x.plannedWeek||'')+(x.plannedDay?' • '+esc(x.plannedDay):'')+
         (x.district?' • '+esc(x.district):'')+(x.phone?' • '+esc(x.phone):'')+'</span></div>').join('');
+    return parsed;
   }catch(err){
     console.error('Excel preview failed',err);
     window.__dealerExcelRows=[];
@@ -216,9 +219,19 @@ async function previewDealerExcel(){
 
 async function importDealersFromExcel(){
   if(teamContext?.role!=='MANAGER')return;
-  const rows=window.__dealerExcelRows||[];
+
+  let rows=window.__dealerExcelRows||[];
   const assignedUserId=document.getElementById('excelAssignedUser')?.value;
-  if(!rows.length){alert('Önce Excel dosyasını seç ve önizlemeyi oluştur.');return}
+
+  if(!rows.length && document.getElementById('dealerExcelFile')?.files?.[0]){
+    await previewDealerExcel();
+    rows=window.__dealerExcelRows||[];
+  }
+
+  if(!rows.length){
+    alert('Excel dosyası seçildi ancak bayi kayıtları okunamadı. Önizleme alanındaki mesajı kontrol et.');
+    return;
+  }
   if(!assignedUserId){alert('Sorumlu satışçıyı seç.');return}
 
   const existingKeys=new Set(state.dealers.map(d=>
@@ -255,7 +268,3 @@ async function importDealersFromExcel(){
   alert(added+' bayi yüklendi.'+(skipped?' '+skipped+' mükerrer kayıt atlandı.':''));
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  const input=document.getElementById('dealerExcelFile');
-  if(input) input.addEventListener('change',previewDealerExcel);
-});
