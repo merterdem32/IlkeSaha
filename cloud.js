@@ -358,7 +358,10 @@ async function syncStateToCloud(initial=false){
   try{
     updateCloudUi(initial?'İlk veriler buluta aktarılıyor…':'Buluta kaydediliyor…');
 
-    const dealerRows=state.dealers.map(dealerToDb);
+    const dealersToSync=teamContext.role==='MANAGER'
+      ? state.dealers
+      : state.dealers.filter(d=>d.assignedUserId===cloudUser.id);
+    const dealerRows=dealersToSync.map(dealerToDb);
     if(dealerRows.length){
       const {error}=await supabaseClient.from('dealers')
         .upsert(dealerRows,{onConflict:'user_id,id'});
@@ -465,13 +468,26 @@ async function loadStateFromCloud(){
   try{
     updateCloudUi('Buluttaki ekip verileri yükleniyor…');
 
+    const isManager=teamContext.role==='MANAGER';
+
+    let dealerQuery=supabaseClient.from('dealers').select('*').order('name');
+    let visitQuery=supabaseClient.from('visits').select('*').order('visit_date',{ascending:false});
+    let paymentQuery=supabaseClient.from('payment_promises').select('*').order('promise_date');
     let meetingQuery=supabaseClient.from('meeting_notes').select('*').order('created_at',{ascending:false});
-    if(teamContext.role!=='MANAGER') meetingQuery=meetingQuery.eq('user_id',cloudUser.id);
+
+    if(!isManager){
+      // Saha personeli yalnızca kendisine atanmış bayileri ve kendi operasyon kayıtlarını yükler.
+      // Böylece saha1/saha2 verileri istemci tarafında birbirine karışmaz.
+      dealerQuery=dealerQuery.eq('assigned_user_id',cloudUser.id);
+      visitQuery=visitQuery.eq('actor_user_id',cloudUser.id);
+      paymentQuery=paymentQuery.eq('actor_user_id',cloudUser.id);
+      meetingQuery=meetingQuery.eq('user_id',cloudUser.id);
+    }
 
     const [dRes,vRes,pRes,mRes,sRes,profilesRes]=await Promise.all([
-      supabaseClient.from('dealers').select('*').order('name'),
-      supabaseClient.from('visits').select('*').order('visit_date',{ascending:false}),
-      supabaseClient.from('payment_promises').select('*').order('promise_date'),
+      dealerQuery,
+      visitQuery,
+      paymentQuery,
       meetingQuery,
       supabaseClient.from('user_settings').select('*').eq('user_id',cloudUser.id).maybeSingle(),
       supabaseClient.from('profiles').select('user_id,username,full_name,email')
@@ -491,8 +507,13 @@ async function loadStateFromCloud(){
 
     const cloudDealers=[...byId.values()].map(dealerFromDb);
     const dealerMap=new Map(cloudDealers.map(d=>[d.id,d]));
-    for(const seeded of seededDealers){
-      if(!dealerMap.has(seeded.id)) dealerMap.set(seeded.id,seeded);
+
+    // Seed listesi yalnızca yönetici/ilk kurulum için fallback'tir.
+    // Saha personeline başka personelin eski seed bayilerini göstermeyiz.
+    if(teamContext.role==='MANAGER'){
+      for(const seeded of seededDealers){
+        if(!dealerMap.has(seeded.id)) dealerMap.set(seeded.id,seeded);
+      }
     }
     state.dealers=[...dealerMap.values()];
 
