@@ -111,41 +111,102 @@ async function previewDealerExcel(){
   try{
     const data=await file.arrayBuffer();
     const wb=XLSX.read(data,{type:'array'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const raw=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+    let parsed=[];
 
-    const parsed=raw.map((r,index)=>{
-      const name=String(excelValue(r,['Bayi','Bayi Adı','Firma','Firma Adı','Ünvan','Unvan','Müşteri','Cari','Name'])).trim();
-      if(!name)return null;
-      return {
-        _excelRow:index+2,
-        name,
-        contact:String(excelValue(r,['Yetkili','İlgili','İlgili Kişi','Contact'])).trim(),
-        phone:String(excelValue(r,['Telefon','Tel','Gsm','Cep','Phone'])).trim(),
-        district:String(excelValue(r,['İlçe','Ilce','Bölge','Bolge','Semt','District'])).trim(),
-        address:String(excelValue(r,['Adres','Address'])).trim(),
-        lat:excelNumber(excelValue(r,['Enlem','Latitude','Lat'])),
-        lng:excelNumber(excelValue(r,['Boylam','Longitude','Lng','Lon'])),
-        plannedWeek:String(excelValue(r,['Hafta','Plan Hafta','Rut Hafta'])).trim(),
-        plannedDay:String(excelValue(r,['Gün','Gun','Plan Gün','Rut Gün'])).trim().toLocaleUpperCase('tr-TR'),
-        plannedOrder:excelNumber(excelValue(r,['Sıra','Sira','Plan Sıra','Rut Sıra','Order'])),
-        plannedStage:String(excelValue(r,['Aşama','Asama','Etap','Stage'])).trim(),
-        originalRouteLogic:String(excelValue(r,['Rut Mantığı','Rut Mantigi','Rota Mantığı','Route Logic'])).trim(),
-        generalNote:String(excelValue(r,['Not','Açıklama','Aciklama','Genel Not'])).trim(),
-        frequency:14,
-        priority:1
-      };
-    }).filter(Boolean);
+    // Trakya tipi rut dosyası: 1. HAFTA ve 2. HAFTA ayrı sayfalarda,
+    // başlık satırı 4. satırda. TELEFON-AYLIK ve özet sayfaları bayi
+    // ana rutuna dahil edilmez.
+    const weekSheets=wb.SheetNames.filter(name=>{
+      const n=normalizeExcelHeader(name);
+      return n==='1hafta'||n==='2hafta';
+    });
+
+    if(weekSheets.length){
+      for(const sheetName of weekSheets){
+        const week=normalizeExcelHeader(sheetName)==='1hafta'?'1. HAFTA':'2. HAFTA';
+        const ws=wb.Sheets[sheetName];
+        const raw=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false,range:3});
+
+        const rows=raw.map((r,index)=>{
+          const name=String(excelValue(r,['SATIŞ NOKTASI','Satis Noktasi','Bayi','Bayi Adı','Firma','Ünvan','Müşteri'])).trim();
+          if(!name)return null;
+
+          const corridor=String(excelValue(r,['KORİDOR','Koridor'])).trim();
+          const cluster=String(excelValue(r,['KONUM KÜMESİ','Konum Kumesi','Aşama','Etap'])).trim();
+          const efficiency=String(excelValue(r,['VERİMLİLİK','Verimlilik'])).trim();
+          const note=String(excelValue(r,['NOTLAR','Notlar','Not','Açıklama'])).trim();
+          const generalNote=[note,efficiency?('Verimlilik: '+efficiency):''].filter(Boolean).join(' • ');
+
+          return {
+            _excelSheet:sheetName,
+            _excelRow:index+5,
+            name,
+            contact:'',
+            phone:String(excelValue(r,['İRTİBAT NO','Irtibat No','Telefon','Tel','Gsm','Cep'])).trim(),
+            district:String(excelValue(r,['KONUM / İLÇE','Konum Ilce','İlçe','Ilce','Bölge'])).trim(),
+            address:String(excelValue(r,['ADRES','Adres'])).trim(),
+            lat:null,
+            lng:null,
+            plannedWeek:week,
+            plannedDay:String(excelValue(r,['ZİYARET GÜNÜ','Ziyaret Gunu','Gün','Gun'])).trim().toLocaleUpperCase('tr-TR'),
+            plannedOrder:excelNumber(excelValue(r,['RUT SIRA','Rut Sira','Sıra','Sira'])),
+            plannedStage:cluster,
+            originalRouteLogic:corridor,
+            generalNote,
+            frequency:14,
+            priority:efficiency.toLocaleUpperCase('tr-TR').includes('YÜKSEK')?2:1
+          };
+        }).filter(Boolean);
+
+        parsed.push(...rows);
+      }
+    }else{
+      // Genel Excel formatı: ilk sayfayı standart başlıklardan okumaya devam et.
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+
+      parsed=raw.map((r,index)=>{
+        const name=String(excelValue(r,['Bayi','Bayi Adı','Firma','Firma Adı','Ünvan','Unvan','Müşteri','Cari','Name'])).trim();
+        if(!name)return null;
+        return {
+          _excelRow:index+2,
+          name,
+          contact:String(excelValue(r,['Yetkili','İlgili','İlgili Kişi','Contact'])).trim(),
+          phone:String(excelValue(r,['Telefon','Tel','Gsm','Cep','Phone'])).trim(),
+          district:String(excelValue(r,['İlçe','Ilce','Bölge','Bolge','Semt','District'])).trim(),
+          address:String(excelValue(r,['Adres','Address'])).trim(),
+          lat:excelNumber(excelValue(r,['Enlem','Latitude','Lat'])),
+          lng:excelNumber(excelValue(r,['Boylam','Longitude','Lng','Lon'])),
+          plannedWeek:String(excelValue(r,['Hafta','Plan Hafta','Rut Hafta'])).trim(),
+          plannedDay:String(excelValue(r,['Gün','Gun','Plan Gün','Rut Gün'])).trim().toLocaleUpperCase('tr-TR'),
+          plannedOrder:excelNumber(excelValue(r,['Sıra','Sira','Plan Sıra','Rut Sıra','Order'])),
+          plannedStage:String(excelValue(r,['Aşama','Asama','Etap','Stage'])).trim(),
+          originalRouteLogic:String(excelValue(r,['Rut Mantığı','Rut Mantigi','Rota Mantığı','Route Logic'])).trim(),
+          generalNote:String(excelValue(r,['Not','Açıklama','Aciklama','Genel Not'])).trim(),
+          frequency:14,
+          priority:1
+        };
+      }).filter(Boolean);
+    }
 
     window.__dealerExcelRows=parsed;
     if(!parsed.length){
-      preview.innerHTML='<div class="muted">Bayi adı sütunu bulunamadı. Sütun adında “Bayi”, “Firma”, “Ünvan”, “Müşteri” veya “Cari” ifadelerinden biri olmalı.</div>';
+      preview.innerHTML='<div class="muted">Bayi kayıtları bulunamadı. Dosyanın başlık yapısını kontrol et.</div>';
       return;
     }
 
+    const week1=parsed.filter(x=>x.plannedWeek==='1. HAFTA').length;
+    const week2=parsed.filter(x=>x.plannedWeek==='2. HAFTA').length;
+    const days=[...new Set(parsed.map(x=>x.plannedDay).filter(Boolean))];
     const sample=parsed.slice(0,5);
-    preview.innerHTML='<div class="note"><strong>'+parsed.length+' bayi bulundu.</strong> Yüklemeden önce ilk 5 kayıt:</div>'+
-      sample.map(x=>'<div class="item"><strong>'+esc(x.name)+'</strong><span class="muted">'+esc(x.district||'')+(x.phone?' • '+esc(x.phone):'')+'</span></div>').join('');
+
+    preview.innerHTML=
+      '<div class="note"><strong>'+parsed.length+' bayi bulundu.</strong>'+
+      (weekSheets.length?'<br><span class="muted">1. Hafta: '+week1+' • 2. Hafta: '+week2+' • Günler: '+esc(days.join(', '))+'</span>':'')+
+      '</div>'+
+      sample.map(x=>'<div class="item"><strong>'+esc(x.name)+'</strong>'+
+        '<span class="muted">'+esc(x.plannedWeek||'')+(x.plannedDay?' • '+esc(x.plannedDay):'')+
+        (x.district?' • '+esc(x.district):'')+(x.phone?' • '+esc(x.phone):'')+'</span></div>').join('');
   }catch(err){
     console.error('Excel preview failed',err);
     window.__dealerExcelRows=[];
