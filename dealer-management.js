@@ -44,7 +44,7 @@ function dealerVisibleToCurrentUser(d){
   if(typeof teamContext==='undefined'||!teamContext?.role)return true;
   if(teamContext.role==='MANAGER')return true;
   if(teamContext.role==='FIELD_STAFF'){
-    return !d.assignedUserId || d.assignedUserId===cloudUser?.id;
+    return d.assignedUserId===cloudUser?.id;
   }
   return true;
 }
@@ -261,10 +261,38 @@ async function importDealersFromExcel(){
     added++;
   }
 
-  persist();
-  await syncStateToCloud(false);
+  // Yeni eklenen kayıtları doğrudan buluta yaz. Tam state senkronuna güvenmeyelim.
+  const imported=state.dealers.filter(d=>d.assignedUserId===assignedUserId && d._createdBy===cloudUser.id)
+    .filter(d=>rows.some(r=>r.name===d.name && String(r.phone||'')===String(d.phone||'')));
+
+  if(imported.length){
+    const {error:importError}=await supabaseClient.from('dealers')
+      .upsert(imported.map(dealerToDb),{onConflict:'user_id,id'});
+    if(importError){
+      console.error('Dealer Excel cloud import failed',importError);
+      alert('Bayiler yerel olarak hazırlandı ancak buluta yükleme başarısız: '+importError.message);
+      return;
+    }
+  }
+
   if(typeof logActivity==='function') await logActivity('DEALERS_IMPORTED','DEALER_IMPORT',null,{added,skipped,assigned_user_id:assignedUserId});
+
   dealerExcelDialog.close();
-  alert(added+' bayi yüklendi.'+(skipped?' '+skipped+' mükerrer kayıt atlandı.':''));
+
+  // Buluttan tekrar yükleyerek gerçekten kaydedilen kayıtları doğrula.
+  await loadStateFromCloud();
+
+  if(typeof loadManagerDirectory==='function') await loadManagerDirectory();
+  if(typeof populateManagerStaffFilters==='function') populateManagerStaffFilters();
+
+  const dealerFilter=document.getElementById('managerDealerStaffFilter');
+  if(dealerFilter && [...dealerFilter.options].some(o=>o.value===assignedUserId)){
+    dealerFilter.value=assignedUserId;
+  }
+  if(typeof renderDealers==='function') renderDealers();
+
+  const visibleImported=state.dealers.filter(d=>d.assignedUserId===assignedUserId).length;
+  alert(added+' bayi yüklendi.'+(skipped?' '+skipped+' mükerrer kayıt atlandı.':'')+
+    '\nSeçili personelin sistemdeki toplam bayi sayısı: '+visibleImported);
 }
 
