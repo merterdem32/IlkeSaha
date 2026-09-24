@@ -118,21 +118,96 @@ function renderDashboard(){
   }).join(''):'Kayıt yok.';
 }
 
+const TURKEY_PROVINCES=[
+  'ADANA','ADIYAMAN','AFYONKARAHİSAR','AĞRI','AMASYA','ANKARA','ANTALYA','ARTVİN','AYDIN','BALIKESİR',
+  'BİLECİK','BİNGÖL','BİTLİS','BOLU','BURDUR','BURSA','ÇANAKKALE','ÇANKIRI','ÇORUM','DENİZLİ',
+  'DİYARBAKIR','EDİRNE','ELAZIĞ','ERZİNCAN','ERZURUM','ESKİŞEHİR','GAZİANTEP','GİRESUN','GÜMÜŞHANE','HAKKARİ',
+  'HATAY','ISPARTA','MERSİN','İSTANBUL','İZMİR','KARS','KASTAMONU','KAYSERİ','KIRKLARELİ','KIRŞEHİR',
+  'KOCAELİ','KONYA','KÜTAHYA','MALATYA','MANİSA','KAHRAMANMARAŞ','MARDİN','MUĞLA','MUŞ','NEVŞEHİR',
+  'NİĞDE','ORDU','RİZE','SAKARYA','SAMSUN','SİİRT','SİNOP','SİVAS','TEKİRDAĞ','TOKAT',
+  'TRABZON','TUNCELİ','ŞANLIURFA','UŞAK','VAN','YOZGAT','ZONGULDAK','AKSARAY','BAYBURT','KARAMAN',
+  'KIRIKKALE','BATMAN','ŞIRNAK','BARTIN','ARDAHAN','IĞDIR','YALOVA','KARABÜK','KİLİS','OSMANİYE','DÜZCE'
+];
+
+function normalizeTrText(value){
+  return String(value||'').trim().toLocaleUpperCase('tr-TR');
+}
+
+function inferDealerCity(d){
+  if(d?.city)return normalizeTrText(d.city);
+  const haystack=normalizeTrText([d?.address,d?.district,d?.generalNote].filter(Boolean).join(' '));
+  const exact=TURKEY_PROVINCES.find(city=>haystack.includes(city));
+  if(exact)return exact;
+
+  // Common ASCII variants in imported address data.
+  const ascii=haystack
+    .replaceAll('İ','I').replaceAll('Ş','S').replaceAll('Ğ','G')
+    .replaceAll('Ü','U').replaceAll('Ö','O').replaceAll('Ç','C');
+  const asciiMap={
+    ISTANBUL:'İSTANBUL',TEKIRDAG:'TEKİRDAĞ',EDIRNE:'EDİRNE',KIRKLARELI:'KIRKLARELİ',
+    KOCAELI:'KOCAELİ',CANAKKALE:'ÇANAKKALE',BALIKESIR:'BALIKESİR',BURSA:'BURSA',
+    SAKARYA:'SAKARYA',YALOVA:'YALOVA'
+  };
+  for(const [k,v] of Object.entries(asciiMap)) if(ascii.includes(k)) return v;
+  return 'BELİRSİZ';
+}
+
+function refreshDealerLocationFilters(){
+  const cityEl=document.getElementById('dealerCityFilter');
+  const districtEl=document.getElementById('dealerDistrictFilter');
+  if(!cityEl||!districtEl)return;
+
+  const visible=state.dealers.filter(d=>d.isActive!==false &&
+    (typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d)));
+
+  const currentCity=cityEl.value||'all';
+  const currentDistrict=districtEl.value||'all';
+
+  const cities=[...new Set(visible.map(inferDealerCity).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,'tr'));
+  cityEl.innerHTML='<option value="all">Tüm iller</option>'+
+    cities.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  if([...cityEl.options].some(o=>o.value===currentCity)) cityEl.value=currentCity;
+
+  const selectedCity=cityEl.value||'all';
+  const districts=[...new Set(visible
+    .filter(d=>selectedCity==='all'||inferDealerCity(d)===selectedCity)
+    .map(d=>normalizeTrText(d.district))
+    .filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,'tr'));
+
+  districtEl.innerHTML='<option value="all">Tüm ilçeler</option>'+
+    districts.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  if([...districtEl.options].some(o=>o.value===currentDistrict)) districtEl.value=currentDistrict;
+}
+
+function onDealerCityFilterChange(){
+  const districtEl=document.getElementById('dealerDistrictFilter');
+  if(districtEl)districtEl.value='all';
+  refreshDealerLocationFilters();
+  renderDealers();
+}
+
 function renderDealers(){
   const q=(dealerSearch?.value||'').toLowerCase();
+  refreshDealerLocationFilters();
   const managerFilter=(typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER')
     ? (document.getElementById('managerDealerStaffFilter')?.value||'all')
     : 'all';
+  const cityFilter=document.getElementById('dealerCityFilter')?.value||'all';
+  const districtFilter=document.getElementById('dealerDistrictFilter')?.value||'all';
   const rows=state.dealers.filter(d=>{
     if(typeof dealerVisibleToCurrentUser==='function'&&!dealerVisibleToCurrentUser(d))return false;
     const textOk=[d.name,d.contact,d.district,d.address].join(' ').toLowerCase().includes(q);
     if(!textOk)return false;
-    if(managerFilter==='all')return true;
-    return d.assignedUserId===managerFilter;
+    if(cityFilter!=='all'&&inferDealerCity(d)!==cityFilter)return false;
+    if(districtFilter!=='all'&&normalizeTrText(d.district)!==districtFilter)return false;
+    if(managerFilter!=='all'&&d.assignedUserId!==managerFilter)return false;
+    return true;
   });
   dealerRows.innerHTML=rows.map(d=>{
     const lv=lastVisitForDealer(d.id);
-    return '<tr><td><strong>'+esc(d.name)+'</strong><br><span class="muted">'+esc(d.district||'')+'</span></td>'+
+    return '<tr><td><strong>'+esc(d.name)+'</strong><br><span class="muted">'+esc(inferDealerCity(d))+(d.district?' • '+esc(d.district):'')+'</span></td>'+
       '<td>'+esc(d.contact||'-')+'<br><span class="muted">'+esc(d.phone||'')+'</span></td>'+
       '<td>'+esc(d.address||'-')+'</td>'+
       '<td><span class="badge '+(d.locationStatus==='verified'?'b-ok':d.locationStatus==='estimated'?'b-warn':'b-info')+'">'+(d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini':'Konum girilmedi')+'</span></td>'+
