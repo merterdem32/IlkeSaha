@@ -82,7 +82,7 @@ function saveVisit(){
     _ownerUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
     _actorUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
     createdAt:new Date().toISOString()});
-  visitDialog.close(); persist(); if(typeof logActivity==='function') logActivity('VISIT_ADDED','DEALER',visitDealerId.value,{note:visitNote.value.trim()});
+  visitDialog.close(); clearTransientDialogState('visitDialog'); persist(); if(typeof logActivity==='function') logActivity('VISIT_ADDED','DEALER',visitDealerId.value,{note:visitNote.value.trim()});
 }
 
 function openPaymentModal(id){
@@ -98,7 +98,7 @@ function savePayment(){
   state.payments.push({id:crypto.randomUUID(),dealerId:paymentDealer.value,amount:Number(paymentAmount.value),date:paymentDate.value,note:paymentNote.value.trim(),status:'pending',
     _ownerUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null,
     _actorUserId:(typeof cloudUser!=='undefined'&&cloudUser)?cloudUser.id:null});
-  paymentDialog.close(); persist(); if(typeof logActivity==='function') logActivity('PAYMENT_ADDED','DEALER',paymentDealer.value,{amount:Number(paymentAmount.value||0)});
+  paymentDialog.close(); clearTransientDialogState('paymentDialog'); persist(); if(typeof logActivity==='function') logActivity('PAYMENT_ADDED','DEALER',paymentDealer.value,{amount:Number(paymentAmount.value||0)});
 }
 
 function renderPayments(){
