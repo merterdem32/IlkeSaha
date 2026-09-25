@@ -83,14 +83,14 @@ function restoreUiStateAfterAuth(){
   if(document.getElementById('meetingDate')&&!meetingDate.value)meetingDate.value=mt.date||'';
 
   setTimeout(()=>{
-    if(saved.openDialog==='paymentDialog'&&saved.paymentDraft){
+    if(saved.openDialog==='paymentDialog'&&saved.paymentDraft&&!document.getElementById('paymentDialog')?.open){
       const d=saved.paymentDraft;
       openPaymentModal(d.dealerId||null);
       if(document.getElementById('paymentDealer')&&d.dealerId)paymentDealer.value=d.dealerId;
       if(document.getElementById('paymentAmount'))paymentAmount.value=d.amount||'';
       if(document.getElementById('paymentDate'))paymentDate.value=d.date||todayStr();
       if(document.getElementById('paymentNote'))paymentNote.value=d.note||'';
-    }else if(saved.openDialog==='visitDialog'&&saved.visitDraft){
+    }else if(saved.openDialog==='visitDialog'&&saved.visitDraft&&!document.getElementById('visitDialog')?.open){
       const d=saved.visitDraft;
       openVisitModal(d.dealerId||'');
       if(document.getElementById('visitDate'))visitDate.value=d.date||dtLocalNow();
