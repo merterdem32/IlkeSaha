@@ -174,6 +174,7 @@ async function initCloud(){
   }catch(err){
     console.error('Cloud init error',err);
     updateCloudUi('Bulut bağlantısı başlatılamadı: '+err.message);
+    showLandingError('Sistem bağlantısı kurulamadı. İnternet bağlantısını kontrol edip sayfayı yenileyin.');
   }
 }
 
@@ -208,8 +209,10 @@ async function cloudSignUp(){
   if(data.session){
     cloudUser=data.user;
     cloudDialog.close();
+    setAuthUiState('pending','Saha verileri yükleniyor…');
     await ensureTeamContext();
     await cloudLoadOrMigrate();
+    setAuthUiState('signed-in');
   }else{
     alert('Hesap oluşturuldu. E-posta doğrulaması açıksa gelen kutundaki bağlantıyı onayla, sonra giriş yap.');
   }
