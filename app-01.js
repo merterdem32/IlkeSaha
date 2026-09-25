@@ -74,6 +74,19 @@ function lastVisitForDealer(id){
   return state.visits.filter(v=>v.dealerId===id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
 }
 
+function uniqueVisitCount(visits){
+  const keys=new Set();
+  for(const v of (visits||[])){
+    const dealerId=v.dealerId||v.dealer_id;
+    const rawDate=v.date||v.visit_date;
+    if(!dealerId||!rawDate)continue;
+    const day=String(rawDate).slice(0,10);
+    const actor=v._actorUserId||v._ownerUserId||v.actor_user_id||v.user_id||'unknown';
+    keys.add(actor+'|'+day+'|'+dealerId);
+  }
+  return keys.size;
+}
+
 function pendingPaymentForDealer(id){
   return state.payments.some(p=>p.dealerId===id && p.status!=='paid' && p.status!=='cancelled');
 }
@@ -120,7 +133,7 @@ function renderDashboard(){
 
   const visibleDealers=state.dealers.filter(d=>d.isActive!==false && (typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d)));
   kpiDealers.textContent=visibleDealers.length;
-  kpiVisits.textContent=myVisits.filter(v=>String(v.date||'').slice(0,10)===todayStr()).length;
+  kpiVisits.textContent=uniqueVisitCount(myVisits.filter(v=>String(v.date||'').slice(0,10)===todayStr()));
   kpiPayments.textContent=myPayments.filter(p=>!['paid','cancelled'].includes(p.status)).length;
   kpiOverdue.textContent=myPayments.filter(p=>paymentStatus(p).text==='Gecikti').length;
   todayRoute.innerHTML=state.todayRoute.length?state.todayRoute.map((id,i)=>{
