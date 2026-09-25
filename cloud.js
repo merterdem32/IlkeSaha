@@ -153,6 +153,7 @@ async function initCloud(){
       await ensureTeamContext();
       await cloudLoadOrMigrate();
       setAuthUiState('signed-in');
+      if(typeof restoreUiStateAfterAuth==='function') restoreUiStateAfterAuth();
     }else{
       updateCloudUi();
       setAuthUiState('signed-out');
@@ -165,6 +166,7 @@ async function initCloud(){
         await ensureTeamContext();
         await cloudLoadOrMigrate();
         setAuthUiState('signed-in');
+      if(typeof restoreUiStateAfterAuth==='function') restoreUiStateAfterAuth();
       }else{
         teamContext={organizationId:null,organizationName:null,joinCode:null,role:null};
         updateCloudUi();
@@ -242,6 +244,7 @@ async function cloudSignIn(){
   await ensureTeamContext();
   await cloudLoadOrMigrate();
   setAuthUiState('signed-in');
+  if(typeof restoreUiStateAfterAuth==='function') restoreUiStateAfterAuth();
 }
 
 async function cloudSignOut(){
