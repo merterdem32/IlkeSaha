@@ -48,7 +48,7 @@ async function renderManagementDashboard(){
     const overdueCount=document.getElementById('mgrOverdueCount');
 
     if(staffCount) staffCount.textContent=fieldStaff.length;
-    if(visitCount) visitCount.textContent=todayVisits.length;
+    if(visitCount) visitCount.textContent=uniqueVisitCount(todayVisits);
     if(paymentCount) paymentCount.textContent=pending.length;
     if(overdueCount) overdueCount.textContent=overdue.length;
 
@@ -64,7 +64,7 @@ async function renderManagementDashboard(){
               '<span class="muted">'+(p.username?esc(p.username)+' • ':'')+(m.role==='MANAGER'?'Yönetici':'Saha Personeli')+'</span></div>'+
             '<span class="badge '+(m.role==='MANAGER'?'b-info':'b-ok')+'">'+m.role+'</span>'+
           '</div>'+
-          '<div class="muted" style="margin-top:8px">Bugünkü ziyaret: <strong>'+personVisits.length+'</strong></div>'+
+          '<div class="muted" style="margin-top:8px">Bugünkü ziyaret: <strong>'+uniqueVisitCount(personVisits)+'</strong></div>'+
           '<div class="toolbar" style="margin:10px 0 0"><button class="btn btn-ghost" onclick="openTeamUserEditor(\''+m.user_id+'\')">Kullanıcıyı Düzenle</button></div>'+
         '</div>';
       }).join(''):'<div class="muted">Aktif ekip üyesi yok.</div>';
@@ -89,8 +89,8 @@ async function renderManagementDashboard(){
             '<button class="btn btn-ghost" onclick="managerFocusStaffRoute(\''+m.user_id+'\')">Rutunu Aç</button>'+
           '</div>'+
           '<div class="toolbar" style="margin:10px 0 0;gap:8px;flex-wrap:wrap">'+
-            '<span class="badge b-ok">Bugün '+personToday.length+' ziyaret</span>'+
-            '<span class="badge b-info">7 gün '+person7.length+' ziyaret</span>'+
+            '<span class="badge b-ok">Bugün '+uniqueVisitCount(personToday)+' ziyaret</span>'+
+            '<span class="badge b-info">7 gün '+uniqueVisitCount(person7)+' ziyaret</span>'+
             '<span class="badge '+(personPending.length?'b-warn':'b-info')+'">'+personPending.length+' bekleyen ödeme</span>'+
             (personOverdue.length?'<span class="badge b-bad">'+personOverdue.length+' geciken</span>':'')+
           '</div>'+
@@ -566,22 +566,26 @@ async function loadManagerReport(){
   const pEl=document.getElementById('mgrReportPayments');
   const aEl=document.getElementById('mgrReportPaymentAmount');
 
-  if(vEl)vEl.textContent=visits.length;
+  const uniqueVisits=uniqueVisitCount(visits);
+  if(vEl)vEl.textContent=uniqueVisits;
   if(dEl)dEl.textContent=dealerIds.length;
   if(pEl)pEl.textContent=payments.length;
   if(aEl)aEl.textContent=fmtMoney(payments.reduce((s,p)=>s+Number(p.amount||0),0));
 
   const byDay=new Map();
   const ensureDay=date=>{
-    if(!byDay.has(date))byDay.set(date,{visits:0,dealers:new Set(),payments:0,amount:0});
+    if(!byDay.has(date))byDay.set(date,{visitKeys:new Set(),dealers:new Set(),payments:0,amount:0});
     return byDay.get(date);
   };
 
   visits.forEach(v=>{
     const day=String(v.visit_date||'').slice(0,10);
     const x=ensureDay(day);
-    x.visits++;
-    if(v.dealer_id)x.dealers.add(v.dealer_id);
+    if(v.dealer_id){
+      const actor=v.actor_user_id||v.user_id||'unknown';
+      x.visitKeys.add(actor+'|'+v.dealer_id);
+      x.dealers.add(v.dealer_id);
+    }
   });
   payments.forEach(p=>{
     const day=String(p.created_at||p.promise_date||'').slice(0,10);
@@ -595,7 +599,7 @@ async function loadManagerReport(){
     return '<div class="item">'+
       '<strong>'+new Date(date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+'</strong>'+
       '<div class="toolbar" style="margin:8px 0 0;gap:8px;flex-wrap:wrap">'+
-        '<span class="badge b-ok">'+x.visits+' ziyaret</span>'+
+        '<span class="badge b-ok">'+x.visitKeys.size+' ziyaret</span>'+
         '<span class="badge b-info">'+x.dealers.size+' bayi</span>'+
         '<span class="badge b-warn">'+x.payments+' ödeme sözü</span>'+
         (x.amount?'<span class="badge b-info">'+fmtMoney(x.amount)+'</span>':'')+
@@ -608,5 +612,5 @@ async function loadManagerReport(){
     : (managerDirectoryCache.profiles.get(staffId)?.full_name||managerDirectoryCache.profiles.get(staffId)?.username||'Personel');
 
   summary.innerHTML='<strong>'+esc(personLabel)+'</strong> • '+start+' → '+end+
-    ' • '+visits.length+' ziyaret • '+dealerIds.length+' farklı bayi';
+    ' • '+uniqueVisits+' ziyaret • '+dealerIds.length+' farklı bayi';
 }
