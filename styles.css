@@ -131,3 +131,45 @@ dialog::backdrop{background:rgba(22,24,29,.58)}
   .brand-copy small{max-width:120px}
   .header-actions{max-width:50%}
 }
+
+
+/* Oturum kapısı: saha ekranları yalnızca doğrulanmış oturumdan sonra görünür. */
+.auth-pending .app,.auth-signed-out .app{display:none!important}
+.auth-pending #publicLanding,.auth-signed-out #publicLanding{display:block}
+.auth-signed-in #publicLanding{display:none!important}
+.public-landing{min-height:calc(100vh - 75px);padding:42px 20px;background:
+  radial-gradient(circle at 15% 15%,rgba(227,6,19,.08),transparent 34%),
+  linear-gradient(135deg,#f7f8fa 0%,#fff 55%,#fff5f5 100%)}
+.public-landing-inner{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:54px;align-items:center;min-height:calc(100vh - 160px)}
+.public-login-card{background:#fff;border:1px solid var(--brand-border);border-radius:22px;padding:30px;box-shadow:0 18px 55px rgba(22,25,29,.10)}
+.public-login-logo{width:116px;height:auto;display:block;margin-bottom:22px}
+.public-login-kicker{font-size:12px;font-weight:850;letter-spacing:.16em;color:var(--brand-red);margin-bottom:8px}
+.public-login-card h2{font-size:26px;line-height:1.2;margin:0 0 10px}
+.public-login-card p{color:var(--brand-muted);font-size:14px;line-height:1.55;margin:0 0 18px}
+.public-login-btn{width:100%;margin-top:16px;min-height:46px;font-size:15px}
+.public-login-status{margin-top:12px;text-align:center;min-height:18px}
+.public-login-status.is-error{color:#a0202a;font-weight:650}
+.public-login-note{margin-top:18px;padding-top:15px;border-top:1px solid var(--brand-border);font-size:12px;color:var(--brand-muted);text-align:center}
+.public-landing-copy h1{font-size:42px;line-height:1.08;margin:14px 0 16px;max-width:660px}
+.public-landing-copy>p{font-size:17px;line-height:1.65;color:var(--brand-muted);max-width:650px}
+.public-chip{display:inline-flex;padding:7px 11px;border-radius:999px;background:var(--brand-red-soft);color:var(--brand-red);font-size:12px;font-weight:800}
+.public-feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:25px}
+.public-feature-grid>div{background:rgba(255,255,255,.8);border:1px solid var(--brand-border);border-radius:14px;padding:15px}
+.public-feature-grid strong{display:block;font-size:14px;margin-bottom:5px}
+.public-feature-grid span{display:block;color:var(--brand-muted);font-size:12px;line-height:1.45}
+@media(max-width:800px){
+  .public-landing{padding:20px 14px}
+  .public-landing-inner{grid-template-columns:1fr;gap:24px;min-height:auto}
+  .public-login-card{max-width:520px;width:100%;margin:0 auto;padding:22px}
+  .public-landing-copy{display:none}
+}
+@media(max-width:600px){
+  .auth-signed-out header .header-actions,.auth-pending header .header-actions{display:none}
+  .auth-signed-out header,.auth-pending header{justify-content:center}
+  .auth-signed-out header .brand-copy,.auth-pending header .brand-copy{display:none}
+  .auth-signed-out header .brand-logo,.auth-pending header .brand-logo{width:82px}
+  .public-landing{min-height:calc(100vh - 61px);padding:18px 12px}
+  .public-login-card{border-radius:18px;padding:20px}
+  .public-login-logo{display:none}
+  .public-login-card h2{font-size:22px}
+}
