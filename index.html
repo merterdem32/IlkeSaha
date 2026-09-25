@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260925-1"/>
+  <link rel="stylesheet" href="/styles.css?v=20260925-2"/>
 </head>
-<body>
+<body class="auth-pending">
 <header>
   <div class="brand">
     <img class="brand-logo" src="/ilke-logo.svg" alt="İlke Akü">
@@ -24,6 +24,36 @@
     <small class="prototype-label">Prototip v0.3</small>
   </div>
 </header>
+<section id="publicLanding" class="public-landing">
+  <div class="public-landing-inner">
+    <div class="public-login-card">
+      <img src="/ilke-logo.svg" alt="İlke Akü" class="public-login-logo">
+      <div class="public-login-kicker">İLKE SAHA</div>
+      <h2>Saha yönetim sistemine hoş geldiniz</h2>
+      <p>Bayi, günlük rut, ziyaret, ödeme sözü ve saha raporlarına erişmek için kullanıcı hesabınızla giriş yapın.</p>
+      <form onsubmit="event.preventDefault();cloudLandingSignIn();">
+        <label>Kullanıcı adı</label>
+        <input id="landingUsername" type="text" autocomplete="username" placeholder="Örn. saha1 veya admin">
+        <label>Şifre</label>
+        <input id="landingPassword" type="password" autocomplete="current-password" placeholder="Şifreniz">
+        <button id="landingLoginBtn" class="btn btn-primary public-login-btn" type="submit">Giriş Yap</button>
+      </form>
+      <div id="landingLoginStatus" class="muted public-login-status">Oturum kontrol ediliyor…</div>
+      <div class="public-login-note">Bu alan yalnızca yetkili İlke Akü kullanıcıları içindir.</div>
+    </div>
+    <div class="public-landing-copy">
+      <span class="public-chip">Mobil saha operasyonu</span>
+      <h1>Günün rutunu planla, ziyaretleri kaydet, yönetime anında aktar.</h1>
+      <p>İlke Saha; saha personeli ve yöneticilerin aynı güncel veri üzerinde çalışması için hazırlanmıştır.</p>
+      <div class="public-feature-grid">
+        <div><strong>Akıllı Rut</strong><span>Günlük bayi planı ve konum bazlı sıralama</span></div>
+        <div><strong>Ziyaret Kaydı</strong><span>Görüşme notları ve takip tarihleri</span></div>
+        <div><strong>Ödeme Takibi</strong><span>Ödeme sözleri ve geciken kayıtlar</span></div>
+        <div><strong>Yönetim Özeti</strong><span>Personel ve saha hareketlerinin ortak görünümü</span></div>
+      </div>
+    </div>
+  </div>
+</section>
 <div class="app">
   <nav>
     <button id="dashboardNavBtn" data-section="dashboard" class="active">Ana Sayfa</button>
@@ -391,26 +421,26 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260925-1"></script>
-<script src="/seed-01.js?v=20260925-1"></script>
-<script src="/seed-02.js?v=20260925-1"></script>
-<script src="/seed-03.js?v=20260925-1"></script>
-<script src="/seed-04.js?v=20260925-1"></script>
-<script src="/seed-05.js?v=20260925-1"></script>
-<script src="/seed-06.js?v=20260925-1"></script>
-<script src="/seed-07.js?v=20260925-1"></script>
-<script src="/seed-08.js?v=20260925-1"></script>
-<script src="/seed-09.js?v=20260925-1"></script>
-<script src="/seed-10.js?v=20260925-1"></script>
-<script src="/seed-11.js?v=20260925-1"></script>
-<script src="/app-01.js?v=20260925-1"></script>
-<script src="/app-02.js?v=20260925-1"></script>
-<script src="/app-03.js?v=20260925-1"></script>
-<script src="/meetings.js?v=20260925-1"></script>
-<script src="/cloud.js?v=20260925-1"></script>
-<script src="/manager.js?v=20260925-1"></script>
-<script src="/dealer-management.js?v=20260925-1"></script>
-<script src="/daily-report.js?v=20260925-1"></script>
+<script src="/supabase-config.js?v=20260925-2"></script>
+<script src="/seed-01.js?v=20260925-2"></script>
+<script src="/seed-02.js?v=20260925-2"></script>
+<script src="/seed-03.js?v=20260925-2"></script>
+<script src="/seed-04.js?v=20260925-2"></script>
+<script src="/seed-05.js?v=20260925-2"></script>
+<script src="/seed-06.js?v=20260925-2"></script>
+<script src="/seed-07.js?v=20260925-2"></script>
+<script src="/seed-08.js?v=20260925-2"></script>
+<script src="/seed-09.js?v=20260925-2"></script>
+<script src="/seed-10.js?v=20260925-2"></script>
+<script src="/seed-11.js?v=20260925-2"></script>
+<script src="/app-01.js?v=20260925-2"></script>
+<script src="/app-02.js?v=20260925-2"></script>
+<script src="/app-03.js?v=20260925-2"></script>
+<script src="/meetings.js?v=20260925-2"></script>
+<script src="/cloud.js?v=20260925-2"></script>
+<script src="/manager.js?v=20260925-2"></script>
+<script src="/dealer-management.js?v=20260925-2"></script>
+<script src="/daily-report.js?v=20260925-2"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
