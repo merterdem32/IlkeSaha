@@ -14,6 +14,102 @@ for(const seeded of seededDealers){
 }
 localStorage.setItem(storeKey,JSON.stringify(state));
 let map,routeMap,miniMap,miniMarker,homeMap,homeMarker,mainMarkers=[],routeLayer;
+const uiStateKey='ilkeSahaUiStateV1';
+
+function readUiState(){
+  try{return JSON.parse(localStorage.getItem(uiStateKey)||'{}')||{};}catch(_){return {};}
+}
+
+function saveTransientUiState(){
+  const current=readUiState();
+  const activeSection=document.querySelector('.section.active')?.id||current.section||'dashboard';
+  const openDialog=document.querySelector('dialog[open]')?.id||null;
+  const next={...current,section:activeSection,openDialog,updatedAt:new Date().toISOString()};
+
+  if(openDialog==='paymentDialog'){
+    next.paymentDraft={
+      dealerId:document.getElementById('paymentDealer')?.value||'',
+      amount:document.getElementById('paymentAmount')?.value||'',
+      date:document.getElementById('paymentDate')?.value||'',
+      note:document.getElementById('paymentNote')?.value||''
+    };
+  }
+  if(openDialog==='visitDialog'){
+    next.visitDraft={
+      dealerId:document.getElementById('visitDealerId')?.value||'',
+      date:document.getElementById('visitDate')?.value||'',
+      note:document.getElementById('visitNote')?.value||'',
+      followUp:document.getElementById('visitFollowUp')?.value||''
+    };
+  }
+
+  next.meetingDraft={
+    title:document.getElementById('meetingTitle')?.value||'',
+    note:document.getElementById('meetingNote')?.value||'',
+    date:document.getElementById('meetingDate')?.value||''
+  };
+
+  localStorage.setItem(uiStateKey,JSON.stringify(next));
+}
+
+function clearTransientDialogState(dialogId){
+  const current=readUiState();
+  if(current.openDialog===dialogId) current.openDialog=null;
+  if(dialogId==='paymentDialog') delete current.paymentDraft;
+  if(dialogId==='visitDialog') delete current.visitDraft;
+  localStorage.setItem(uiStateKey,JSON.stringify(current));
+}
+
+function closeTransientDialog(dialogId){
+  const dialog=document.getElementById(dialogId);
+  if(dialog?.open)dialog.close();
+  clearTransientDialogState(dialogId);
+}
+
+function restoreUiStateAfterAuth(){
+  if(typeof cloudUser!=='undefined'&&!cloudUser)return;
+  const saved=readUiState();
+  let section=saved.section||'dashboard';
+
+  const requestedBtn=document.querySelector('nav button[data-section="'+section+'"]');
+  if(!requestedBtn||requestedBtn.style.display==='none'){
+    section=(typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER')?'management':'dashboard';
+  }
+  activateSection(section);
+
+  const mt=saved.meetingDraft||{};
+  if(document.getElementById('meetingTitle')&&!meetingTitle.value)meetingTitle.value=mt.title||'';
+  if(document.getElementById('meetingNote')&&!meetingNote.value)meetingNote.value=mt.note||'';
+  if(document.getElementById('meetingDate')&&!meetingDate.value)meetingDate.value=mt.date||'';
+
+  setTimeout(()=>{
+    if(saved.openDialog==='paymentDialog'&&saved.paymentDraft){
+      const d=saved.paymentDraft;
+      openPaymentModal(d.dealerId||null);
+      if(document.getElementById('paymentDealer')&&d.dealerId)paymentDealer.value=d.dealerId;
+      if(document.getElementById('paymentAmount'))paymentAmount.value=d.amount||'';
+      if(document.getElementById('paymentDate'))paymentDate.value=d.date||todayStr();
+      if(document.getElementById('paymentNote'))paymentNote.value=d.note||'';
+    }else if(saved.openDialog==='visitDialog'&&saved.visitDraft){
+      const d=saved.visitDraft;
+      openVisitModal(d.dealerId||'');
+      if(document.getElementById('visitDate'))visitDate.value=d.date||dtLocalNow();
+      if(document.getElementById('visitNote'))visitNote.value=d.note||'';
+      if(document.getElementById('visitFollowUp'))visitFollowUp.value=d.followUp||'';
+    }
+  },120);
+}
+
+document.addEventListener('input',e=>{
+  if(e.target?.closest?.('#paymentDialog,#visitDialog,#meetings')) saveTransientUiState();
+});
+document.addEventListener('change',e=>{
+  if(e.target?.closest?.('#paymentDialog,#visitDialog,#meetings')) saveTransientUiState();
+});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveTransientUiState();});
+window.addEventListener('pagehide',saveTransientUiState);
+window.addEventListener('beforeunload',saveTransientUiState);
+
 
 function persist(){
   // Bulut sistemi hazırken oturum yoksa saha verisinin yerel olarak sessizce
@@ -113,6 +209,11 @@ function activateSection(sectionId){
   document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
   section.classList.add('active');
+
+  const savedUi=readUiState();
+  savedUi.section=sectionId;
+  savedUi.updatedAt=new Date().toISOString();
+  localStorage.setItem(uiStateKey,JSON.stringify(savedUi));
 
   if(sectionId==='mapsec') setTimeout(()=>{initMap();map.invalidateSize();renderMap();},50);
   if(sectionId==='route') setTimeout(()=>{initRouteMap();routeMap.invalidateSize();renderRouteMap();},50);
