@@ -229,7 +229,10 @@ function renderDealers(){
       '<td>'+(lv?new Date(lv.date).toLocaleDateString('tr-TR'):'-')+'</td>'+
       '<td class="manager-only-col">'+esc(typeof salespersonLabel==='function'?salespersonLabel(d.assignedUserId):(d.assignedUserId||'Atanmamış'))+'</td>'+
       '<td class="manager-only-col">'+(lv?esc(actorDisplayName(lv)):'-')+'</td>'+
-      '<td><button class="btn btn-ghost" onclick="showDealer(\''+d.id+'\')">Aç</button></td></tr>'
+      '<td><div class="toolbar" style="margin:0;flex-wrap:nowrap">'+
+        '<button class="btn btn-ghost" onclick="showDealer(\''+d.id+'\')">Aç</button>'+
+        '<button class="btn btn-accent" onclick="openGoogleMapsDirections(\''+d.id+'\')">Yol Tarifi</button>'+
+      '</div></td></tr>'
   }).join('');
 }
 
