@@ -10,11 +10,23 @@ function clearDealerCoordinates(){
   }
 }
 
+function parseCoordinateNumber(value){
+  const raw=String(value??'').trim();
+  if(raw==='') return null;
+  // Türkiye klavyelerinde ondalık ayıracı virgül olabiliyor.
+  // Tek koordinat alanında 41,012345 gibi bir değeri de doğru kabul et.
+  const normalized=(raw.includes(',')&&!raw.includes('.'))?raw.replace(',','.'):raw;
+  const num=Number(normalized);
+  return Number.isFinite(num)?num:NaN;
+}
+
 function saveDealer(){
   if(!dealerName.value.trim()){alert('Bayi adı gerekli.');return}
   const latRaw=dealerLat.value.trim();
   const lngRaw=dealerLng.value.trim();
-  if((latRaw!==''||lngRaw!=='') && !isValidDealerCoordinate(latRaw,lngRaw)){
+  const latValue=parseCoordinateNumber(latRaw);
+  const lngValue=parseCoordinateNumber(lngRaw);
+  if((latRaw!==''||lngRaw!=='') && !isValidDealerCoordinate(latValue,lngValue)){
     alert('Koordinat geçersiz. Enlem -90 ile 90, boylam -180 ile 180 arasında olmalı. İstersen “Koordinatları Temizle” ile sıfırlayıp yeniden girebilirsin.');
     return;
   }
@@ -22,7 +34,7 @@ function saveDealer(){
     id:dealerId.value||crypto.randomUUID(),
     name:dealerName.value.trim(),contact:dealerContact.value.trim(),phone:dealerPhone.value.trim(),
     district:dealerDistrict.value.trim(),address:dealerAddress.value.trim(),
-    lat:latRaw===''?null:Number(latRaw),lng:lngRaw===''?null:Number(lngRaw),
+    lat:latRaw===''?null:latValue,lng:lngRaw===''?null:lngValue,
     locationStatus:(dealerLat.value===''||dealerLng.value==='')?'unset':dealerLocationStatus.value,frequency:Number(dealerFrequency.value||14),
     priority:Number(dealerPriority.value||1),generalNote:dealerGeneralNote.value.trim(),isActive:true,
     assignedUserId:document.getElementById('dealerAssignedUser')?.value||
@@ -372,25 +384,58 @@ function extractCoordinatesFromText(text){
   const raw=String(text||'').trim();
   if(!raw)return null;
 
-  const decoded=decodeURIComponent(raw.replace(/%2C/gi,','));
+  let decoded=raw;
+  try{ decoded=decodeURIComponent(raw.replace(/%2C/gi,',')); }catch(_){}
 
-  // Plain coordinates: 41.012345, 28.987654
-  let m=decoded.match(/(-?\d{1,2}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)/);
+  const valid=(lat,lng)=>{
+    lat=Number(lat); lng=Number(lng);
+    return Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180
+      ? {lat,lng}:null;
+  };
+
+  // Google Maps URL biçimleri önce kontrol edilir.
+  let m=decoded.match(/@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/);
+  if(m)return valid(m[1],m[2]);
+
+  m=decoded.match(/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/);
+  if(m)return valid(m[1],m[2]);
+
+  m=decoded.match(/(?:query|destination|q)=(-?\d{1,2}(?:\.\d+)?)[,%\s]+(-?\d{1,3}(?:\.\d+)?)/i);
   if(m){
-    const lat=Number(m[1]),lng=Number(m[2]);
-    if(Math.abs(lat)<=90&&Math.abs(lng)<=180)return {lat,lng};
+    const found=valid(m[1],m[2]);
+    if(found)return found;
   }
 
-  // Google Maps URLs often contain @lat,lng or !3dlat!4dlng
-  m=decoded.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
-  if(m)return {lat:Number(m[1]),lng:Number(m[2])};
+  // Standart kopyalama: 41.012345, 28.987654
+  m=decoded.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+  if(m){
+    const found=valid(m[1],m[2]);
+    if(found)return found;
+  }
 
-  m=decoded.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
-  if(m)return {lat:Number(m[1]),lng:Number(m[2])};
+  // Boşlukla ayrılmış biçim: 41.012345 28.987654
+  m=decoded.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s+(-?\d{1,3}(?:\.\d+)?)\s*$/);
+  if(m){
+    const found=valid(m[1],m[2]);
+    if(found)return found;
+  }
 
-  // Query parameters such as query=lat,lng / destination=lat,lng
-  m=decoded.match(/(?:query|destination|q)=(-?\d{1,2}\.\d+)%?2?C?[,\s]?(-?\d{1,3}\.\d+)/i);
-  if(m)return {lat:Number(m[1]),lng:Number(m[2])};
+  // Türkçe ondalık virgül + noktalı virgül ayırıcı:
+  // 41,012345; 28,987654
+  m=decoded.match(/^\s*(-?\d{1,2}),([0-9]+)\s*;\s*(-?\d{1,3}),([0-9]+)\s*$/);
+  if(m){
+    const found=valid(m[1]+'.'+m[2],m[3]+'.'+m[4]);
+    if(found)return found;
+  }
+
+  // Bazı kopyalamalarda iki ondalık virgül de virgülle ayrılıyor:
+  // 41,012345, 28,987654
+  // Dört parçayı iki koordinat olarak güvenli şekilde birleştir.
+  m=decoded.match(/^\s*(-?\d{1,2}),([0-9]{3,})\s*,\s*(-?\d{1,3}),([0-9]{3,})\s*$/);
+  if(m){
+    const found=valid(m[1]+'.'+m[2],m[3]+'.'+m[4]);
+    if(found)return found;
+  }
 
   return null;
 }
