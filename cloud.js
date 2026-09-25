@@ -6,6 +6,61 @@ let cloudHydrating=false;
 let teamContext={organizationId:null,organizationName:null,joinCode:null,role:null};
 let teamProfilesById=new Map();
 
+function setAuthUiState(state,message=''){
+  const body=document.body;
+  if(!body)return;
+  body.classList.remove('auth-pending','auth-signed-out','auth-signed-in');
+  body.classList.add(state==='signed-in'?'auth-signed-in':state==='signed-out'?'auth-signed-out':'auth-pending');
+
+  const landingStatus=document.getElementById('landingLoginStatus');
+  if(landingStatus){
+    landingStatus.textContent=message || (state==='signed-out'?'Devam etmek için giriş yapın.':state==='signed-in'?'Giriş başarılı.':'Oturum kontrol ediliyor…');
+    landingStatus.classList.remove('is-error');
+  }
+  const landingBtn=document.getElementById('landingLoginBtn');
+  if(landingBtn) landingBtn.disabled=state==='pending';
+}
+
+function showLandingError(message){
+  setAuthUiState('signed-out');
+  const el=document.getElementById('landingLoginStatus');
+  if(el){
+    el.textContent=message;
+    el.classList.add('is-error');
+  }
+}
+
+async function cloudLandingSignIn(){
+  if(!supabaseClient){
+    showLandingError('Bağlantı henüz hazır değil. Birkaç saniye sonra tekrar deneyin.');
+    return;
+  }
+  const username=(document.getElementById('landingUsername')?.value||'').trim();
+  const password=document.getElementById('landingPassword')?.value||'';
+  if(!username||!password){
+    showLandingError('Kullanıcı adı ve şifre gerekli.');
+    return;
+  }
+  setAuthUiState('pending','Giriş yapılıyor…');
+  const email=normalizeLoginIdentity(username);
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){
+    showLandingError('Giriş yapılamadı. Kullanıcı adı veya şifreyi kontrol edin.');
+    return;
+  }
+  cloudUser=data.user;
+  try{
+    await ensureTeamContext();
+    await cloudLoadOrMigrate();
+    if(document.getElementById('landingPassword')) landingPassword.value='';
+    setAuthUiState('signed-in');
+  }catch(err){
+    console.error('Landing sign in error',err);
+    showLandingError('Hesap açıldı ancak saha verileri yüklenemedi. Tekrar deneyin.');
+  }
+}
+
+
 function updateCloudUi(message){
   const btn=document.getElementById('cloudAccountBtn');
   const status=document.getElementById('cloudStatus');
@@ -25,6 +80,10 @@ function updateCloudUi(message){
 }
 
 function applyRoleUi(){
+  if(!cloudUser){
+    setAuthUiState('signed-out');
+    return;
+  }
   const isManager=teamContext.role==='MANAGER';
   const isField=teamContext.role==='FIELD_STAFF';
 
@@ -90,20 +149,26 @@ async function initCloud(){
     cloudUser=session?.user||null;
 
     if(cloudUser){
+      setAuthUiState('pending','Saha verileri yükleniyor…');
       await ensureTeamContext();
       await cloudLoadOrMigrate();
+      setAuthUiState('signed-in');
     }else{
       updateCloudUi();
+      setAuthUiState('signed-out');
     }
 
     supabaseClient.auth.onAuthStateChange(async (_event,session)=>{
       cloudUser=session?.user||null;
       if(cloudUser){
+        setAuthUiState('pending','Saha verileri yükleniyor…');
         await ensureTeamContext();
         await cloudLoadOrMigrate();
+        setAuthUiState('signed-in');
       }else{
         teamContext={organizationId:null,organizationName:null,joinCode:null,role:null};
         updateCloudUi();
+        setAuthUiState('signed-out');
       }
     });
   }catch(err){
@@ -170,8 +235,10 @@ async function cloudSignIn(){
   if(error){alert('Giriş yapılamadı: '+error.message);return}
   cloudUser=data.user;
   cloudDialog.close();
+  setAuthUiState('pending','Saha verileri yükleniyor…');
   await ensureTeamContext();
   await cloudLoadOrMigrate();
+  setAuthUiState('signed-in');
 }
 
 async function cloudSignOut(){
@@ -180,7 +247,8 @@ async function cloudSignOut(){
   cloudUser=null;
   teamContext={organizationId:null,organizationName:null,joinCode:null,role:null};
   updateCloudUi();
-  cloudDialog.close();
+  setAuthUiState('signed-out');
+  document.querySelectorAll('dialog[open]').forEach(d=>{try{d.close()}catch(_){}});
 }
 
 async function ensureTeamContext(){
