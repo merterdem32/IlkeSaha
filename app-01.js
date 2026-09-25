@@ -16,9 +16,20 @@ localStorage.setItem(storeKey,JSON.stringify(state));
 let map,routeMap,miniMap,miniMarker,homeMap,homeMarker,mainMarkers=[],routeLayer;
 
 function persist(){
+  // Bulut sistemi hazırken oturum yoksa saha verisinin yerel olarak sessizce
+  // değişmesine izin verme. Böylece kullanıcı "kaydedildi" sanıp veri kaybetmez.
+  if(typeof supabaseClient!=='undefined' && supabaseClient && (typeof cloudUser==='undefined'||!cloudUser)){
+    const saved=JSON.parse(localStorage.getItem(storeKey)||'null');
+    if(saved) state=saved;
+    renderAll();
+    if(typeof setAuthUiState==='function') setAuthUiState('signed-out');
+    alert('Bu işlem için önce giriş yapmalısın.');
+    return false;
+  }
   localStorage.setItem(storeKey,JSON.stringify(state));
   renderAll();
   if(typeof scheduleCloudSync==='function') scheduleCloudSync();
+  return true;
 }
 
 function fmtMoney(n){return new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(Number(n||0))}
@@ -77,6 +88,10 @@ function paymentStatus(p){
 }
 
 function activateSection(sectionId){
+  if(typeof supabaseClient!=='undefined' && supabaseClient && (typeof cloudUser==='undefined'||!cloudUser)){
+    if(typeof setAuthUiState==='function') setAuthUiState('signed-out');
+    return;
+  }
   const btn=document.querySelector('nav button[data-section="'+sectionId+'"]');
   const section=document.getElementById(sectionId);
   if(!btn||!section||btn.style.display==='none')return;
