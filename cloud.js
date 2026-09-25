@@ -54,6 +54,7 @@ async function cloudLandingSignIn(){
     await cloudLoadOrMigrate();
     if(document.getElementById('landingPassword')) landingPassword.value='';
     setAuthUiState('signed-in');
+    if(typeof restoreUiStateAfterAuth==='function') restoreUiStateAfterAuth();
   }catch(err){
     console.error('Landing sign in error',err);
     showLandingError('Hesap açıldı ancak saha verileri yüklenemedi. Tekrar deneyin.');
@@ -215,6 +216,7 @@ async function cloudSignUp(){
     await ensureTeamContext();
     await cloudLoadOrMigrate();
     setAuthUiState('signed-in');
+    if(typeof restoreUiStateAfterAuth==='function') restoreUiStateAfterAuth();
   }else{
     alert('Hesap oluşturuldu. E-posta doğrulaması açıksa gelen kutundaki bağlantıyı onayla, sonra giriş yap.');
   }
