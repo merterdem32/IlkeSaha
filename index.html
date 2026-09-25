@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260925-4"/>
+  <link rel="stylesheet" href="/styles.css?v=20260925-5"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -24,6 +24,14 @@
     <small class="prototype-label">Prototip v0.3</small>
   </div>
 </header>
+<section id="authLoading" class="auth-loading">
+  <div class="auth-loading-card">
+    <img src="/ilke-logo.svg" alt="İlke Akü">
+    <div class="auth-spinner" aria-hidden="true"></div>
+    <strong>İlke Saha açılıyor</strong>
+    <span>Oturumunuz kontrol ediliyor…</span>
+  </div>
+</section>
 <section id="publicLanding" class="public-landing">
   <div class="public-landing-inner">
     <div class="public-login-card">
@@ -269,8 +277,8 @@
           </div>
 
           <div class="grid" style="margin-top:12px">
-            <div class="card span-3"><div class="muted">Ziyaret</div><div id="mgrReportVisits" class="kpi">-</div></div>
-            <div class="card span-3"><div class="muted">Ziyaret edilen bayi</div><div id="mgrReportDealers" class="kpi">-</div></div>
+            <div class="card span-3"><div class="muted">Toplam ziyaret</div><div id="mgrReportVisits" class="kpi">-</div></div>
+            <div class="card span-3"><div class="muted">Farklı ziyaret edilen bayi</div><div id="mgrReportDealers" class="kpi">-</div></div>
             <div class="card span-3"><div class="muted">Ödeme sözü</div><div id="mgrReportPayments" class="kpi">-</div></div>
             <div class="card span-3"><div class="muted">Toplam ödeme sözü</div><div id="mgrReportPaymentAmount" class="kpi" style="font-size:24px">-</div></div>
           </div>
@@ -411,36 +419,36 @@
 <dialog id="detailDialog"><div class="modal"><div id="dealerDetail"></div><div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="detailDialog.close()">Kapat</button></div></div></dialog>
 <dialog id="visitDialog"><div class="modal">
   <h3>Ziyaret Kaydı</h3><input type="hidden" id="visitDealerId"><label>Tarih / Saat</label><input id="visitDate" type="datetime-local"><label>Görüşme notu</label><textarea id="visitNote" placeholder="Fiyat sordu, sipariş ihtimali, rakip marka, tekrar aranacak konu..."></textarea><label>Sonraki takip tarihi</label><input id="visitFollowUp" type="date">
-  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="visitDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="saveVisit()">Kaydet</button></div>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="closeTransientDialog('visitDialog')">Vazgeç</button><button class="btn btn-primary" onclick="saveVisit()">Kaydet</button></div>
 </div></dialog>
 <dialog id="paymentDialog"><div class="modal">
   <h3>Ödeme Sözü Ekle</h3><label>Bayi</label><select id="paymentDealer"></select><div class="row"><div><label>Tutar (TL)</label><input id="paymentAmount" type="number" min="0" step="0.01"></div><div><label>Söz tarihi</label><input id="paymentDate" type="date"></div></div><label>Açıklama</label><textarea id="paymentNote" placeholder="Örn. Havale yapacak, çek kapaması, bakiye ödeme..."></textarea>
-  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="paymentDialog.close()">Vazgeç</button><button class="btn btn-primary" onclick="savePayment()">Kaydet</button></div>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="closeTransientDialog('paymentDialog')">Vazgeç</button><button class="btn btn-primary" onclick="savePayment()">Kaydet</button></div>
 </div></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260925-4"></script>
-<script src="/seed-01.js?v=20260925-4"></script>
-<script src="/seed-02.js?v=20260925-4"></script>
-<script src="/seed-03.js?v=20260925-4"></script>
-<script src="/seed-04.js?v=20260925-4"></script>
-<script src="/seed-05.js?v=20260925-4"></script>
-<script src="/seed-06.js?v=20260925-4"></script>
-<script src="/seed-07.js?v=20260925-4"></script>
-<script src="/seed-08.js?v=20260925-4"></script>
-<script src="/seed-09.js?v=20260925-4"></script>
-<script src="/seed-10.js?v=20260925-4"></script>
-<script src="/seed-11.js?v=20260925-4"></script>
-<script src="/app-01.js?v=20260925-4"></script>
-<script src="/app-02.js?v=20260925-4"></script>
-<script src="/app-03.js?v=20260925-4"></script>
-<script src="/meetings.js?v=20260925-4"></script>
-<script src="/cloud.js?v=20260925-4"></script>
-<script src="/manager.js?v=20260925-4"></script>
-<script src="/dealer-management.js?v=20260925-4"></script>
-<script src="/daily-report.js?v=20260925-4"></script>
+<script src="/supabase-config.js?v=20260925-5"></script>
+<script src="/seed-01.js?v=20260925-5"></script>
+<script src="/seed-02.js?v=20260925-5"></script>
+<script src="/seed-03.js?v=20260925-5"></script>
+<script src="/seed-04.js?v=20260925-5"></script>
+<script src="/seed-05.js?v=20260925-5"></script>
+<script src="/seed-06.js?v=20260925-5"></script>
+<script src="/seed-07.js?v=20260925-5"></script>
+<script src="/seed-08.js?v=20260925-5"></script>
+<script src="/seed-09.js?v=20260925-5"></script>
+<script src="/seed-10.js?v=20260925-5"></script>
+<script src="/seed-11.js?v=20260925-5"></script>
+<script src="/app-01.js?v=20260925-5"></script>
+<script src="/app-02.js?v=20260925-5"></script>
+<script src="/app-03.js?v=20260925-5"></script>
+<script src="/meetings.js?v=20260925-5"></script>
+<script src="/cloud.js?v=20260925-5"></script>
+<script src="/manager.js?v=20260925-5"></script>
+<script src="/dealer-management.js?v=20260925-5"></script>
+<script src="/daily-report.js?v=20260925-5"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
