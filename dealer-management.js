@@ -302,3 +302,84 @@ async function importDealersFromExcel(){
     '\nSeçili personelin sistemdeki toplam bayi sayısı: '+visibleImported);
 }
 
+
+
+function dealerExportScope(){
+  const isManager=typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER';
+  let dealers=state.dealers.filter(d=>d.isActive!==false);
+
+  if(!isManager && typeof cloudUser!=='undefined' && cloudUser){
+    dealers=dealers.filter(d=>d.assignedUserId===cloudUser.id);
+  }
+
+  return dealers.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'tr'));
+}
+
+function exportDealersToExcel(){
+  if(typeof XLSX==='undefined'){
+    alert('Excel oluşturucu yüklenemedi. İnternet bağlantısını kontrol edip tekrar dene.');
+    return;
+  }
+
+  const dealers=dealerExportScope();
+  if(!dealers.length){
+    alert('Excel çıktısı alınacak bayi bulunamadı.');
+    return;
+  }
+
+  const rows=dealers.map((d,index)=>({
+    'Sıra':index+1,
+    'Bayi Adı':d.name||'',
+    'Telefon':d.phone||'',
+    'Yetkili':d.contact||'',
+    'İl':typeof inferDealerCity==='function'?inferDealerCity(d):'',
+    'İlçe':d.district||'',
+    'Adres':d.address||'',
+    'Enlem':(d.lat===null||d.lat===undefined)?'':Number(d.lat),
+    'Boylam':(d.lng===null||d.lng===undefined)?'':Number(d.lng),
+    'Konum Durumu':d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini':'Konum Girilmedi',
+    'Cari Kod':d.cariCode||'',
+    'Z Kodlu':d.isZCode?'Evet':'Hayır',
+    'Sorumlu':typeof salespersonLabel==='function'?salespersonLabel(d.assignedUserId):(d.assignedUserId||'')
+  }));
+
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[
+    {wch:6},{wch:42},{wch:18},{wch:24},{wch:16},{wch:20},{wch:55},
+    {wch:14},{wch:14},{wch:16},{wch:16},{wch:10},{wch:22}
+  ];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Bayiler');
+
+  const roleLabel=(typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER')
+    ? 'TUM-BAYILER'
+    : ((typeof teamProfilesById!=='undefined'&&cloudUser)?(teamProfilesById.get(cloudUser.id)?.username||'SAHA'):'SAHA');
+  const date=new Date();
+  const stamp=[
+    date.getFullYear(),
+    String(date.getMonth()+1).padStart(2,'0'),
+    String(date.getDate()).padStart(2,'0')
+  ].join('-');
+
+  XLSX.writeFile(wb,'Ilke-Saha-'+roleLabel+'-'+stamp+'.xlsx');
+}
+
+function renderMapExportSummary(){
+  const el=document.getElementById('mapExportSummary');
+  if(!el)return;
+
+  const dealers=dealerExportScope();
+  const located=dealers.filter(d=>isValidDealerCoordinate(d.lat,d.lng)).length;
+  const missing=dealers.length-located;
+
+  el.innerHTML=
+    '<strong>'+dealers.length+' bayi</strong> Excel çıktısına dahil edilecek • '+
+    '<span class="badge b-ok">'+located+' koordinatlı</span> '+
+    (missing?'<span class="badge b-warn">'+missing+' koordinat eksik</span>':'<span class="badge b-ok">Tüm koordinatlar tamam</span>')+
+    '<div class="muted" style="margin-top:6px">'+
+      ((typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER')
+        ? 'Admin çıktısı organizasyondaki tüm aktif bayileri içerir.'
+        : 'Saha personeli çıktısı yalnızca kendisine atanmış aktif bayileri içerir.')+
+    '</div>';
+}
