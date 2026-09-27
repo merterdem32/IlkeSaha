@@ -221,6 +221,7 @@ function activateSection(sectionId){
   if(sectionId==='management' && typeof renderManagementDashboard==='function') setTimeout(()=>renderManagementDashboard(),50);
   if(sectionId==='dailyreport' && typeof prepareDailyReportControls==='function') setTimeout(()=>prepareDailyReportControls(),50);
   if(sectionId==='zcodes' && typeof prepareZCodePage==='function') setTimeout(()=>prepareZCodePage(),50);
+  if(sectionId==='inactiveDealers' && typeof renderInactiveDealers==='function') setTimeout(()=>renderInactiveDealers(),50);
 }
 
 function nav(){
@@ -327,6 +328,7 @@ function renderDealers(){
   const cityFilter=document.getElementById('dealerCityFilter')?.value||'all';
   const districtFilter=document.getElementById('dealerDistrictFilter')?.value||'all';
   const rows=state.dealers.filter(d=>{
+    if(d.isActive===false)return false;
     if(typeof dealerVisibleToCurrentUser==='function'&&!dealerVisibleToCurrentUser(d))return false;
     const textOk=[d.name,d.contact,d.district,d.address].join(' ').toLowerCase().includes(q);
     if(!textOk)return false;
@@ -349,6 +351,62 @@ function renderDealers(){
         '<button class="btn btn-accent" onclick="openGoogleMapsDirections(\''+d.id+'\')">Yol Tarifi</button>'+
       '</div></td></tr>'
   }).join('');
+}
+
+
+function renderInactiveDealers(){
+  const list=document.getElementById('inactiveDealerList');
+  const summary=document.getElementById('inactiveDealerSummary');
+  const search=document.getElementById('inactiveDealerSearch');
+  if(!list||!summary)return;
+
+  const q=(search?.value||'').trim().toLocaleLowerCase('tr-TR');
+  const rows=state.dealers
+    .filter(d=>d.isActive===false)
+    .filter(d=>typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))
+    .filter(d=>{
+      if(!q)return true;
+      return [d.name,d.district,d.address,d.phone,d.cariCode]
+        .filter(Boolean).join(' ').toLocaleLowerCase('tr-TR').includes(q);
+    })
+    .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'tr'));
+
+  summary.innerHTML='<strong>'+rows.length+' rut dışı bayi</strong>'+
+    (q?' • arama sonucu':'')+
+    '<div class="muted" style="margin-top:4px">Bu bayiler silinmedi; geçmiş ziyaretleri, notları, koordinatları ve ödeme kayıtları korunuyor.</div>';
+
+  list.innerHTML=rows.length?rows.map(d=>{
+    const lv=lastVisitForDealer(d.id);
+    return '<div class="item inactive-dealer-item">'+
+      '<div class="inactive-dealer-main">'+
+        '<div><span class="badge b-inactive">RUT DIŞI</span> <strong>'+esc(d.name)+'</strong>'+
+          (d.isZCode?' <span class="badge b-zcode">Z KODLU</span>':'')+
+        '</div>'+
+        '<div class="muted">'+esc(d.district||'')+
+          (d.cariCode?' • '+esc(d.cariCode):'')+
+          (lv?' • Son ziyaret: '+new Date(lv.date).toLocaleDateString('tr-TR'):'')+
+        '</div>'+
+        (d.address?'<div class="muted">'+esc(d.address)+'</div>':'')+
+      '</div>'+
+      '<div class="toolbar inactive-dealer-actions" style="margin:0">'+
+        '<button class="btn btn-ghost" onclick="showDealer(\''+d.id+'\')">Bayiyi Aç</button>'+
+        '<button class="btn btn-accent" onclick="openGoogleMapsDirections(\''+d.id+'\')">Yol Tarifi</button>'+
+        '<button class="btn btn-primary" onclick="reactivateDealer(\''+d.id+'\')">Tekrar Aktif Et</button>'+
+      '</div>'+
+    '</div>';
+  }).join(''):'<div class="muted">Rut dışı bayi bulunmuyor.</div>';
+}
+
+function reactivateDealer(id){
+  const d=state.dealers.find(x=>x.id===id);
+  if(!d)return;
+  const ok=confirm(d.name+' tekrar aktif bayi listesine ve rut planlarına dahil edilsin mi?');
+  if(!ok)return;
+  d.isActive=true;
+  persist();
+  if(typeof logActivity==='function') logActivity('DEALER_REACTIVATED','DEALER',id,{});
+  renderInactiveDealers();
+  renderDealers();
 }
 
 function initMap(){
