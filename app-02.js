@@ -288,7 +288,8 @@ function deactivateDealerFromRoute(id){
   state.todayRoute=(state.todayRoute||[]).filter(x=>x!==id);
   persist();
   markRouteDraftChanged();
-  if(typeof logActivity==='function') logActivity('VISIT_MARKED','DEALER',id,{});
+  if(typeof logActivity==='function') logActivity('DEALER_DEACTIVATED','DEALER',id,{});
+  if(typeof renderInactiveDealers==='function') renderInactiveDealers();
 }
 
 
