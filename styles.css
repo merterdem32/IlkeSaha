@@ -182,3 +182,15 @@ dialog::backdrop{background:rgba(22,24,29,.58)}
   .public-login-logo{display:none}
   .public-login-card h2{font-size:22px}
 }
+
+.b-zcode{background:#fff0d8;color:#9a4f00;border:1px solid #ffc978;font-weight:850}
+.z-route-warning{margin-top:7px;padding:7px 9px;border-radius:9px;background:#fff8ed;border:1px solid #ffd59c}
+.z-code-item{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.z-code-main{min-width:0;flex:1}
+.z-code-main strong{display:inline}
+.z-code-actions{flex:0 0 auto}
+@media(max-width:700px){
+  .z-code-item{display:block}
+  .z-code-actions{margin-top:10px!important}
+  .z-code-actions .btn{flex:1}
+}
