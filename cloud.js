@@ -407,6 +407,8 @@ function dealerToDb(d){
     planned_order:d.plannedOrder??null,planned_stage:d.plannedStage||null,
     original_route_logic:d.originalRouteLogic||null,departure:d.departure||null,
     assigned_user_id:d.assignedUserId||null,
+    cari_code:d.cariCode||null,
+    is_z_code:d.isZCode===true,
     is_active:d.isActive!==false,
     updated_at:new Date().toISOString()
   };
@@ -421,6 +423,8 @@ function dealerFromDb(d){
     plannedOrder:d.planned_order??0,plannedStage:d.planned_stage||'',
     originalRouteLogic:d.original_route_logic||'',departure:d.departure||'08:30',
     assignedUserId:d.assigned_user_id||null,
+    cariCode:d.cari_code||'',
+    isZCode:d.is_z_code===true,
     isActive:d.is_active!==false,
     _ownerUserId:d.created_by||null,
     _createdBy:d.created_by||null
