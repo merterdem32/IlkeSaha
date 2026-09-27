@@ -220,6 +220,7 @@ function activateSection(sectionId){
   if(sectionId==='settings') setTimeout(()=>{initHomeMap();homeMap.invalidateSize();},50);
   if(sectionId==='management' && typeof renderManagementDashboard==='function') setTimeout(()=>renderManagementDashboard(),50);
   if(sectionId==='dailyreport' && typeof prepareDailyReportControls==='function') setTimeout(()=>prepareDailyReportControls(),50);
+  if(sectionId==='zcodes' && typeof prepareZCodePage==='function') setTimeout(()=>prepareZCodePage(),50);
 }
 
 function nav(){
@@ -336,7 +337,7 @@ function renderDealers(){
   });
   dealerRows.innerHTML=rows.map(d=>{
     const lv=lastVisitForDealer(d.id);
-    return '<tr><td><strong>'+esc(d.name)+'</strong><br><span class="muted">'+esc(inferDealerCity(d))+(d.district?' • '+esc(d.district):'')+'</span></td>'+
+    return '<tr><td><strong>'+esc(d.name)+'</strong>'+(d.isZCode?'<div><span class="badge b-zcode">Z KODLU</span>'+(d.cariCode?' <span class="muted">'+esc(d.cariCode)+'</span>':'')+'</div>':'')+'<br><span class="muted">'+esc(inferDealerCity(d))+(d.district?' • '+esc(d.district):'')+'</span></td>'+
       '<td>'+esc(d.contact||'-')+'<br><span class="muted">'+esc(d.phone||'')+'</span></td>'+
       '<td>'+esc(d.address||'-')+'</td>'+
       '<td><span class="badge '+(d.locationStatus==='verified'?'b-ok':d.locationStatus==='estimated'?'b-warn':'b-info')+'">'+(d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini':'Konum girilmedi')+'</span></td>'+
