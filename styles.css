@@ -194,3 +194,14 @@ dialog::backdrop{background:rgba(22,24,29,.58)}
   .z-code-actions{margin-top:10px!important}
   .z-code-actions .btn{flex:1}
 }
+
+.b-inactive{background:#eef0f3;color:#525866;border:1px solid #d6dae0;font-weight:850}
+.inactive-dealer-item{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.inactive-dealer-main{min-width:0;flex:1}
+.inactive-dealer-main strong{display:inline}
+.inactive-dealer-actions{flex:0 0 auto}
+@media(max-width:760px){
+  .inactive-dealer-item{display:block}
+  .inactive-dealer-actions{margin-top:10px!important;display:grid;grid-template-columns:1fr 1fr}
+  .inactive-dealer-actions .btn:last-child{grid-column:1 / -1}
+}
