@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260927-2"/>
+  <link rel="stylesheet" href="/styles.css?v=20260927-3"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -66,6 +66,7 @@
   <nav>
     <button id="dashboardNavBtn" data-section="dashboard" class="active">Ana Sayfa</button>
     <button data-section="dealers">Bayiler</button>
+    <button data-section="zcodes">Z Kodlu Bayiler</button>
     <button data-section="mapsec">Harita</button>
     <button id="routeNavBtn" data-section="route">Rut Planı</button>
     <button data-section="payments">Ödemeler</button>
@@ -102,6 +103,41 @@
           </select>
         </div>
         <div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Yetkili</th><th>Adres</th><th>Konum</th><th>Son ziyaret</th><th class="manager-only-col">Sorumlu</th><th class="manager-only-col">Son ziyaret eden</th><th></th></tr></thead><tbody id="dealerRows"></tbody></table></div>
+      </div>
+    </section>
+    <section id="zcodes" class="section">
+      <div class="grid">
+        <div class="card span-12">
+          <div class="toolbar" style="justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0">Z Kodlu Bayiler</h2>
+              <div class="muted">Genelde rutin ziyaret yapılmayan Z kodlu müşterileri burada yönetebilirsin.</div>
+            </div>
+            <input id="zCodeSearch" placeholder="Cari kod veya bayi ara..." style="max-width:320px" oninput="renderZCodePage()">
+          </div>
+          <div id="zCodeSummary" class="muted" style="margin-bottom:12px">Liste yükleniyor…</div>
+          <div id="zCodeList" class="list"></div>
+        </div>
+
+        <div class="card span-6">
+          <h3>Mevcut Bayiyi Z Kodlu Yap</h3>
+          <div class="muted">Bayiler listesindeki bir kaydı Z kodlu olarak işaretle.</div>
+          <label>Bayi</label>
+          <select id="zDealerSelect"><option value="">Bayi seç</option></select>
+          <label>Cari kod (opsiyonel)</label>
+          <input id="zDealerCari" placeholder="Örn. 120.01.0448">
+          <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="addExistingDealerAsZ()">Z Kodlu Yap</button>
+        </div>
+
+        <div class="card span-6">
+          <h3>Bağımsız Z Kodlu Kayıt Ekle</h3>
+          <div class="muted">Henüz Bayiler listesinde olmayan Z kodlu müşteriyi havuza ekle.</div>
+          <label>Cari kod</label>
+          <input id="zManualCari" placeholder="Örn. 120.01.0500">
+          <label>Ünvan / isim</label>
+          <input id="zManualName" placeholder="Bayi veya müşteri ünvanı">
+          <button class="btn btn-accent" style="width:100%;margin-top:12px" onclick="addManualZEntry()">Z Kodlu Listeye Ekle</button>
+        </div>
       </div>
     </section>
     <section id="mapsec" class="section">
@@ -429,26 +465,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260927-2"></script>
-<script src="/seed-01.js?v=20260927-2"></script>
-<script src="/seed-02.js?v=20260927-2"></script>
-<script src="/seed-03.js?v=20260927-2"></script>
-<script src="/seed-04.js?v=20260927-2"></script>
-<script src="/seed-05.js?v=20260927-2"></script>
-<script src="/seed-06.js?v=20260927-2"></script>
-<script src="/seed-07.js?v=20260927-2"></script>
-<script src="/seed-08.js?v=20260927-2"></script>
-<script src="/seed-09.js?v=20260927-2"></script>
-<script src="/seed-10.js?v=20260927-2"></script>
-<script src="/seed-11.js?v=20260927-2"></script>
-<script src="/app-01.js?v=20260927-2"></script>
-<script src="/app-02.js?v=20260927-2"></script>
-<script src="/app-03.js?v=20260927-2"></script>
-<script src="/meetings.js?v=20260927-2"></script>
-<script src="/cloud.js?v=20260927-2"></script>
-<script src="/manager.js?v=20260927-2"></script>
-<script src="/dealer-management.js?v=20260927-2"></script>
-<script src="/daily-report.js?v=20260927-2"></script>
+<script src="/supabase-config.js?v=20260927-3"></script>
+<script src="/seed-01.js?v=20260927-3"></script>
+<script src="/seed-02.js?v=20260927-3"></script>
+<script src="/seed-03.js?v=20260927-3"></script>
+<script src="/seed-04.js?v=20260927-3"></script>
+<script src="/seed-05.js?v=20260927-3"></script>
+<script src="/seed-06.js?v=20260927-3"></script>
+<script src="/seed-07.js?v=20260927-3"></script>
+<script src="/seed-08.js?v=20260927-3"></script>
+<script src="/seed-09.js?v=20260927-3"></script>
+<script src="/seed-10.js?v=20260927-3"></script>
+<script src="/seed-11.js?v=20260927-3"></script>
+<script src="/app-01.js?v=20260927-3"></script>
+<script src="/app-02.js?v=20260927-3"></script>
+<script src="/app-03.js?v=20260927-3"></script>
+<script src="/meetings.js?v=20260927-3"></script>
+<script src="/cloud.js?v=20260927-3"></script>
+<script src="/z-code.js?v=20260927-3"></script>
+<script src="/manager.js?v=20260927-3"></script>
+<script src="/dealer-management.js?v=20260927-3"></script>
+<script src="/daily-report.js?v=20260927-3"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
