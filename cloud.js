@@ -376,8 +376,9 @@ async function cloudLoadOrMigrate(){
   updateCloudUi('Bulut verileri kontrol ediliyor…');
 
   const {count,error}=await supabaseClient
-    .from('dealers')
-    .select('id',{count:'exact',head:true});
+    .from('organization_dealers')
+    .select('id',{count:'exact',head:true})
+    .eq('organization_id',teamContext.organizationId);
 
   if(error){
     updateCloudUi('Bulut tabloları hazır değil: '+error.message);
@@ -395,7 +396,6 @@ async function cloudLoadOrMigrate(){
 function dealerToDb(d){
   return {
     id:d.id,
-    user_id:d._ownerUserId||cloudUser.id,
     organization_id:teamContext.organizationId,
     created_by:d._createdBy||d._ownerUserId||cloudUser.id,
     updated_by:cloudUser.id,
@@ -422,8 +422,8 @@ function dealerFromDb(d){
     originalRouteLogic:d.original_route_logic||'',departure:d.departure||'08:30',
     assignedUserId:d.assigned_user_id||null,
     isActive:d.is_active!==false,
-    _ownerUserId:d.user_id,
-    _createdBy:d.created_by||d.user_id
+    _ownerUserId:d.created_by||null,
+    _createdBy:d.created_by||null
   };
 }
 
@@ -438,43 +438,19 @@ async function syncStateToCloud(initial=false){
       ? state.dealers
       : state.dealers.filter(d=>d.assignedUserId===cloudUser.id);
 
-    // dealers tablosunun PK'si (user_id,id). Başka bir kullanıcı tarafından
-    // oluşturulmuş ama bize atanmış bayi için upsert yapmak INSERT RLS kontrolüne
-    // takılır; çünkü satırın user_id'si auth.uid() değildir. Böyle paylaşılan
-    // satırlar zaten vardır, bu yüzden onları doğrudan UPDATE ediyoruz.
-    // Kendi satırlarımız / yeni bayiler ise normal upsert ile kaydedilir.
-    const ownDealerRows=[];
-    const sharedDealerUpdates=[];
-    for(const d of dealersToSync){
+    // Faz 7: bayi artık organizasyon seviyesinde tek satırdır.
+    // PK: (organization_id,id). user_id sahipliği yoktur.
+    const dealerRows=dealersToSync.map(d=>{
       const row=dealerToDb(d);
-      if(!d._ownerUserId || d._ownerUserId===cloudUser.id){
-        row.user_id=cloudUser.id;
-        ownDealerRows.push(row);
-      }else{
-        sharedDealerUpdates.push({dealer:d,row});
-      }
-    }
+      row.created_by=d._createdBy||d._ownerUserId||cloudUser.id;
+      row.updated_by=cloudUser.id;
+      return row;
+    });
 
-    if(ownDealerRows.length){
-      const {error}=await supabaseClient.from('dealers')
-        .upsert(ownDealerRows,{onConflict:'user_id,id'});
+    if(dealerRows.length){
+      const {error}=await supabaseClient.from('organization_dealers')
+        .upsert(dealerRows,{onConflict:'organization_id,id'});
       if(error) throw new Error('Bayi kaydı: '+error.message);
-    }
-
-    if(sharedDealerUpdates.length){
-      const results=await Promise.all(sharedDealerUpdates.map(({dealer,row})=>{
-        const {
-          user_id,
-          id,
-          ...changes
-        }=row;
-        return supabaseClient.from('dealers')
-          .update(changes)
-          .eq('user_id',dealer._ownerUserId)
-          .eq('id',dealer.id);
-      }));
-      const failed=results.find(r=>r.error);
-      if(failed?.error) throw new Error('Paylaşılan bayi kaydı: '+failed.error.message);
     }
 
     // Yalnızca mevcut kullanıcının oluşturduğu ziyaretleri uzlaştır.
@@ -579,7 +555,10 @@ async function loadStateFromCloud(){
 
     const isManager=teamContext.role==='MANAGER';
 
-    let dealerQuery=supabaseClient.from('dealers').select('*').order('name');
+    let dealerQuery=supabaseClient.from('organization_dealers')
+      .select('*')
+      .eq('organization_id',teamContext.organizationId)
+      .order('name');
     let visitQuery=supabaseClient.from('visits').select('*').order('visit_date',{ascending:false});
     let paymentQuery=supabaseClient.from('payment_promises').select('*').order('promise_date');
     let meetingQuery=supabaseClient.from('meeting_notes').select('*').order('created_at',{ascending:false});
