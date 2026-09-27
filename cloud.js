@@ -437,11 +437,44 @@ async function syncStateToCloud(initial=false){
     const dealersToSync=teamContext.role==='MANAGER'
       ? state.dealers
       : state.dealers.filter(d=>d.assignedUserId===cloudUser.id);
-    const dealerRows=dealersToSync.map(dealerToDb);
-    if(dealerRows.length){
+
+    // dealers tablosunun PK'si (user_id,id). Başka bir kullanıcı tarafından
+    // oluşturulmuş ama bize atanmış bayi için upsert yapmak INSERT RLS kontrolüne
+    // takılır; çünkü satırın user_id'si auth.uid() değildir. Böyle paylaşılan
+    // satırlar zaten vardır, bu yüzden onları doğrudan UPDATE ediyoruz.
+    // Kendi satırlarımız / yeni bayiler ise normal upsert ile kaydedilir.
+    const ownDealerRows=[];
+    const sharedDealerUpdates=[];
+    for(const d of dealersToSync){
+      const row=dealerToDb(d);
+      if(!d._ownerUserId || d._ownerUserId===cloudUser.id){
+        row.user_id=cloudUser.id;
+        ownDealerRows.push(row);
+      }else{
+        sharedDealerUpdates.push({dealer:d,row});
+      }
+    }
+
+    if(ownDealerRows.length){
       const {error}=await supabaseClient.from('dealers')
-        .upsert(dealerRows,{onConflict:'user_id,id'});
-      if(error) throw error;
+        .upsert(ownDealerRows,{onConflict:'user_id,id'});
+      if(error) throw new Error('Bayi kaydı: '+error.message);
+    }
+
+    if(sharedDealerUpdates.length){
+      const results=await Promise.all(sharedDealerUpdates.map(({dealer,row})=>{
+        const {
+          user_id,
+          id,
+          ...changes
+        }=row;
+        return supabaseClient.from('dealers')
+          .update(changes)
+          .eq('user_id',dealer._ownerUserId)
+          .eq('id',dealer.id);
+      }));
+      const failed=results.find(r=>r.error);
+      if(failed?.error) throw new Error('Paylaşılan bayi kaydı: '+failed.error.message);
     }
 
     // Yalnızca mevcut kullanıcının oluşturduğu ziyaretleri uzlaştır.
