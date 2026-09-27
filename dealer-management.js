@@ -266,8 +266,14 @@ async function importDealersFromExcel(){
     .filter(d=>rows.some(r=>r.name===d.name && String(r.phone||'')===String(d.phone||'')));
 
   if(imported.length){
-    const {error:importError}=await supabaseClient.from('dealers')
-      .upsert(imported.map(dealerToDb),{onConflict:'user_id,id'});
+    const rowsToImport=imported.map(d=>{
+      const row=dealerToDb(d);
+      row.created_by=d._createdBy||cloudUser.id;
+      row.updated_by=cloudUser.id;
+      return row;
+    });
+    const {error:importError}=await supabaseClient.from('organization_dealers')
+      .upsert(rowsToImport,{onConflict:'organization_id,id'});
     if(importError){
       console.error('Dealer Excel cloud import failed',importError);
       alert('Bayiler yerel olarak hazırlandı ancak buluta yükleme başarısız: '+importError.message);
