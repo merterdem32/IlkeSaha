@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260928-3"/>
+  <link rel="stylesheet" href="/styles.css?v=20260928-4"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -157,11 +157,19 @@
     <section id="mapsec" class="section">
       <div class="split">
         <div class="card"><h3>Bayi haritası</h3><div class="muted" style="margin-bottom:10px">Bir bayi eklerken haritada istediğin yere tıklayarak daha gitmeden tahmini konum işaretleyebilirsin.</div><div id="map"></div></div>
-        <div class="card"><h3>Harita açıklaması</h3><div class="list">
-          <div class="item"><span class="badge b-warn">Tahmini</span><br><span class="muted">Hafızadan veya adres bilgisine göre işaretlenmiş konum.</span></div>
-          <div class="item"><span class="badge b-ok">Doğrulandı</span><br><span class="muted">Sahada teyit edilmiş konum.</span></div>
-          <div class="item"><span class="badge b-info">Ev</span><br><span class="muted">Rut başlangıç noktası.</span></div>
-        </div></div>
+        <div class="card">
+          <h3>Harita açıklaması</h3>
+          <div class="list">
+            <div class="item"><span class="badge b-warn">Tahmini</span><br><span class="muted">Hafızadan veya adres bilgisine göre işaretlenmiş konum.</span></div>
+            <div class="item"><span class="badge b-ok">Doğrulandı</span><br><span class="muted">Sahada teyit edilmiş konum.</span></div>
+            <div class="item"><span class="badge b-info">Ev</span><br><span class="muted">Rut başlangıç noktası.</span></div>
+          </div>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+          <h3>Bayi Excel Çıktısı</h3>
+          <div class="muted" style="margin-bottom:10px">Bayi adı, telefon, yetkili, ilçe, adres, enlem ve boylam bilgilerini Excel olarak indirebilirsin.</div>
+          <div id="mapExportSummary" class="note">Bayi bilgileri hazırlanıyor…</div>
+          <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="exportDealersToExcel()">Excel Olarak İndir</button>
+        </div>
       </div>
     </section>
     <section id="route" class="section">
@@ -479,27 +487,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260928-3"></script>
-<script src="/seed-01.js?v=20260928-3"></script>
-<script src="/seed-02.js?v=20260928-3"></script>
-<script src="/seed-03.js?v=20260928-3"></script>
-<script src="/seed-04.js?v=20260928-3"></script>
-<script src="/seed-05.js?v=20260928-3"></script>
-<script src="/seed-06.js?v=20260928-3"></script>
-<script src="/seed-07.js?v=20260928-3"></script>
-<script src="/seed-08.js?v=20260928-3"></script>
-<script src="/seed-09.js?v=20260928-3"></script>
-<script src="/seed-10.js?v=20260928-3"></script>
-<script src="/seed-11.js?v=20260928-3"></script>
-<script src="/app-01.js?v=20260928-3"></script>
-<script src="/app-02.js?v=20260928-3"></script>
-<script src="/app-03.js?v=20260928-3"></script>
-<script src="/meetings.js?v=20260928-3"></script>
-<script src="/cloud.js?v=20260928-3"></script>
-<script src="/z-code.js?v=20260928-3"></script>
-<script src="/manager.js?v=20260928-3"></script>
-<script src="/dealer-management.js?v=20260928-3"></script>
-<script src="/daily-report.js?v=20260928-3"></script>
+<script src="/supabase-config.js?v=20260928-4"></script>
+<script src="/seed-01.js?v=20260928-4"></script>
+<script src="/seed-02.js?v=20260928-4"></script>
+<script src="/seed-03.js?v=20260928-4"></script>
+<script src="/seed-04.js?v=20260928-4"></script>
+<script src="/seed-05.js?v=20260928-4"></script>
+<script src="/seed-06.js?v=20260928-4"></script>
+<script src="/seed-07.js?v=20260928-4"></script>
+<script src="/seed-08.js?v=20260928-4"></script>
+<script src="/seed-09.js?v=20260928-4"></script>
+<script src="/seed-10.js?v=20260928-4"></script>
+<script src="/seed-11.js?v=20260928-4"></script>
+<script src="/app-01.js?v=20260928-4"></script>
+<script src="/app-02.js?v=20260928-4"></script>
+<script src="/app-03.js?v=20260928-4"></script>
+<script src="/meetings.js?v=20260928-4"></script>
+<script src="/cloud.js?v=20260928-4"></script>
+<script src="/z-code.js?v=20260928-4"></script>
+<script src="/manager.js?v=20260928-4"></script>
+<script src="/dealer-management.js?v=20260928-4"></script>
+<script src="/daily-report.js?v=20260928-4"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
