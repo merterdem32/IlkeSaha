@@ -215,7 +215,7 @@ function activateSection(sectionId){
   savedUi.updatedAt=new Date().toISOString();
   localStorage.setItem(uiStateKey,JSON.stringify(savedUi));
 
-  if(sectionId==='mapsec') setTimeout(()=>{initMap();map.invalidateSize();renderMap();},50);
+  if(sectionId==='mapsec') setTimeout(()=>{initMap();map.invalidateSize();renderMap();if(typeof renderMapExportSummary==='function')renderMapExportSummary();},50);
   if(sectionId==='route') setTimeout(()=>{initRouteMap();routeMap.invalidateSize();renderRouteMap();},50);
   if(sectionId==='settings') setTimeout(()=>{initHomeMap();homeMap.invalidateSize();},50);
   if(sectionId==='management' && typeof renderManagementDashboard==='function') setTimeout(()=>renderManagementDashboard(),50);
