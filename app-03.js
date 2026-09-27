@@ -23,6 +23,7 @@ function renderRoute(){
       '<span class="muted">'+esc(d.district||'')+' • '+
       (d.locationStatus==='verified'?'Doğrulandı':d.locationStatus==='estimated'?'Tahmini konum':'Konum girilmedi')+
       ' '+(d.plannedStage?'• '+esc(d.plannedStage):'')+'</span>'+
+      (d.isZCode?'<div class="z-route-warning"><span class="badge b-zcode">⚠ Z KODLU</span><span class="muted"> Genelde rutin ziyaret yapılmıyor</span></div>':'')+
       (visited?'<div><span class="badge b-ok" style="margin-top:6px">Bugün ziyaret edildi</span></div>':'')+
       '</div>'+
       '<div class="toolbar route-actions">'+
