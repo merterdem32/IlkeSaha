@@ -298,6 +298,26 @@
         <div class="card span-12">
           <div class="toolbar" style="justify-content:space-between;align-items:flex-end">
             <div>
+              <h3 style="margin:0">2 Haftalık Rut Planı Yönetimi</h3>
+              <div class="muted">Saha1 / Saha2 seçip 1. veya 2. haftanın günlerini görüntüle, sırala ve düzenle.</div>
+            </div>
+            <div class="toolbar" style="margin:0;flex-wrap:wrap">
+              <div><label>Personel</label><select id="managerTemplateStaff" onchange="loadManagerRouteTemplate()"></select></div>
+              <div><label>Hafta</label><select id="managerTemplateWeek" onchange="loadManagerRouteTemplate()"><option>1. HAFTA</option><option>2. HAFTA</option></select></div>
+              <div><label>Gün</label><select id="managerTemplateDay" onchange="loadManagerRouteTemplate()"><option>PAZARTESİ</option><option>SALI</option><option>ÇARŞAMBA</option><option>PERŞEMBE</option><option>CUMA</option><option>CUMARTESİ</option></select></div>
+            </div>
+          </div>
+          <div id="managerTemplateSummary" class="muted" style="margin:10px 0">Plan yükleniyor…</div>
+          <div id="managerTemplateList" class="list"></div>
+          <div class="toolbar" style="margin-top:12px">
+            <select id="managerTemplateAddDealer" style="flex:1;min-width:260px"></select>
+            <button class="btn btn-primary" onclick="managerTemplateAddDealer()">+ Seçili Güne Bayi Ekle</button>
+          </div>
+        </div>
+
+        <div class="card span-12">
+          <div class="toolbar" style="justify-content:space-between;align-items:flex-end">
+            <div>
               <h3 style="margin:0">Rut Yönetimi</h3>
               <div class="muted">Personel ve tarih seçerek günlük rutu görüntüle, sırala ve düzenle.</div>
             </div>
