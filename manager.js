@@ -103,6 +103,7 @@ async function renderManagementDashboard(){
     }
 
     populateManagerStaffFilters();
+    setTimeout(()=>prepareManagerRouteTemplateControls(),0);
     setTimeout(()=>prepareManagerRouteControls(),0);
     setTimeout(()=>prepareManagerReportControls(),0);
 
@@ -141,7 +142,8 @@ function formatActivityAction(action){
     MEETING_NOTE_ADDED:'Toplantı notu eklendi',
     MEETING_NOTE_DONE:'Toplantı notu tamamlandı',
     UPDATE_USER:'Kullanıcı bilgileri güncellendi',
-    ROUTE_UPDATED:'Rut güncellendi',
+    ROUTE_UPDATED:'Günlük rut güncellendi',
+    ROUTE_TEMPLATE_UPDATED:'2 haftalık rut planı güncellendi',
     ROUTE_PUBLISHED:'Günlük rut onaylandı ve paylaşıldı',
     DEALERS_IMPORTED:'Excel ile bayiler yüklendi'
   };
@@ -216,6 +218,188 @@ async function saveTeamUserEdit(){
   alert('Kullanıcı bilgileri güncellendi.');
 }
 
+
+
+
+let managerTemplateStops=[];
+
+function managerTemplateSelection(){
+  return {
+    staffId:document.getElementById('managerTemplateStaff')?.value||'',
+    week:document.getElementById('managerTemplateWeek')?.value||'1. HAFTA',
+    day:document.getElementById('managerTemplateDay')?.value||'PAZARTESİ'
+  };
+}
+
+async function prepareManagerRouteTemplateControls(){
+  if(teamContext?.role!=='MANAGER')return;
+  const staffSel=document.getElementById('managerTemplateStaff');
+  if(!staffSel)return;
+
+  await loadManagerDirectory();
+  const fieldMembers=managerDirectoryCache.members.filter(m=>m.role==='FIELD_STAFF'&&m.is_active!==false);
+  const current=staffSel.value;
+  staffSel.innerHTML=fieldMembers.map(m=>{
+    const p=managerDirectoryCache.profiles.get(m.user_id)||{};
+    const label=p.full_name||p.username||p.email||m.user_id;
+    return '<option value="'+esc(m.user_id)+'">'+esc(label)+(p.username?' ('+esc(p.username)+')':'')+'</option>';
+  }).join('');
+  if(current&&fieldMembers.some(m=>m.user_id===current)) staffSel.value=current;
+
+  await loadManagerRouteTemplate();
+}
+
+function renderManagerTemplateDealerOptions(){
+  const sel=document.getElementById('managerTemplateAddDealer');
+  if(!sel)return;
+  const {staffId,week,day}=managerTemplateSelection();
+  const currentIds=new Set(managerTemplateStops.map(d=>d.id));
+
+  const options=state.dealers
+    .filter(d=>d.isActive!==false && d.assignedUserId===staffId && !currentIds.has(d.id))
+    .sort((a,b)=>String(a.name).localeCompare(String(b.name),'tr'))
+    .map(d=>{
+      const where=d.plannedWeek&&d.plannedDay ? ' • '+d.plannedWeek+' '+d.plannedDay : ' • Plansız';
+      return '<option value="'+esc(d.id)+'">'+esc(d.name)+esc(where)+'</option>';
+    }).join('');
+
+  sel.innerHTML=options||'<option value="">Eklenebilecek bayi yok</option>';
+}
+
+async function loadManagerRouteTemplate(){
+  if(teamContext?.role!=='MANAGER')return;
+  const {staffId,week,day}=managerTemplateSelection();
+  const list=document.getElementById('managerTemplateList');
+  const summary=document.getElementById('managerTemplateSummary');
+  if(!staffId||!list||!summary)return;
+
+  managerTemplateStops=state.dealers
+    .filter(d=>d.isActive!==false && d.assignedUserId===staffId && d.plannedWeek===week && d.plannedDay===day)
+    .sort((a,b)=>(Number(a.plannedOrder)||999)-(Number(b.plannedOrder)||999));
+
+  const p=managerDirectoryCache.profiles.get(staffId)||{};
+  const staffName=p.full_name||p.username||'Personel';
+  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+esc(week)+' • '+esc(day)+' • <strong>'+managerTemplateStops.length+' bayi</strong>';
+
+  list.innerHTML=managerTemplateStops.length?managerTemplateStops.map((d,i)=>{
+    return '<div class="item">'+
+      '<div class="toolbar" style="justify-content:space-between;align-items:center;margin:0">'+
+        '<div style="min-width:0;flex:1">'+
+          '<strong>'+(i+1)+'. '+esc(d.name)+'</strong>'+
+          '<span class="muted">'+esc(d.district||'')+(d.locationStatus==='verified'?' • Konum doğrulandı':d.locationStatus==='estimated'?' • Tahmini konum':' • Konum girilmedi')+'</span>'+
+        '</div>'+
+        '<div class="toolbar" style="margin:0">'+
+          '<button class="btn btn-ghost" '+(i===0?'disabled':'')+' onclick="managerTemplateMoveDealer('+i+',-1)">↑</button>'+
+          '<button class="btn btn-ghost" '+(i===managerTemplateStops.length-1?'disabled':'')+' onclick="managerTemplateMoveDealer('+i+',1)">↓</button>'+
+          '<button class="btn btn-danger" onclick="managerTemplateRemoveDealer('+i+')">Günden Çıkar</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join(''):'<div class="muted">Bu gün için planlanmış bayi yok.</div>';
+
+  renderManagerTemplateDealerOptions();
+}
+
+async function updateManagerTemplateDealer(d,changes){
+  if(!d)return;
+  const payload={
+    planned_week:changes.plannedWeek===undefined?d.plannedWeek:(changes.plannedWeek||null),
+    planned_day:changes.plannedDay===undefined?d.plannedDay:(changes.plannedDay||null),
+    planned_order:changes.plannedOrder===undefined?(d.plannedOrder??null):(changes.plannedOrder??null),
+    assigned_user_id:changes.assignedUserId===undefined?(d.assignedUserId||null):(changes.assignedUserId||null),
+    updated_by:cloudUser.id,
+    updated_at:new Date().toISOString()
+  };
+
+  let q=supabaseClient.from('dealers').update(payload).eq('id',d.id);
+  if(d._ownerUserId)q=q.eq('user_id',d._ownerUserId);
+  const {error}=await q;
+  if(error)throw error;
+
+  d.plannedWeek=payload.planned_week||'';
+  d.plannedDay=payload.planned_day||'';
+  d.plannedOrder=payload.planned_order??0;
+  d.assignedUserId=payload.assigned_user_id||null;
+}
+
+async function persistManagerTemplateOrder(){
+  const {week,day}=managerTemplateSelection();
+  for(let i=0;i<managerTemplateStops.length;i++){
+    const d=managerTemplateStops[i];
+    await updateManagerTemplateDealer(d,{plannedWeek:week,plannedDay:day,plannedOrder:i+1});
+  }
+}
+
+async function compactManagerTemplateDay(staffId,week,day){
+  if(!staffId||!week||!day)return;
+  const rows=state.dealers
+    .filter(d=>d.isActive!==false&&d.assignedUserId===staffId&&d.plannedWeek===week&&d.plannedDay===day)
+    .sort((a,b)=>(Number(a.plannedOrder)||999)-(Number(b.plannedOrder)||999));
+  for(let i=0;i<rows.length;i++){
+    if(Number(rows[i].plannedOrder)!==i+1) await updateManagerTemplateDealer(rows[i],{plannedOrder:i+1});
+  }
+}
+
+async function managerTemplateAddDealer(){
+  const dealerId=document.getElementById('managerTemplateAddDealer')?.value;
+  const {staffId,week,day}=managerTemplateSelection();
+  if(!dealerId||!staffId)return;
+
+  const d=state.dealers.find(x=>x.id===dealerId);
+  if(!d)return;
+
+  const oldWeek=d.plannedWeek||'';
+  const oldDay=d.plannedDay||'';
+  try{
+    await updateManagerTemplateDealer(d,{
+      assignedUserId:staffId,
+      plannedWeek:week,
+      plannedDay:day,
+      plannedOrder:managerTemplateStops.length+1
+    });
+    if(oldWeek&&oldDay&&(oldWeek!==week||oldDay!==day)){
+      await compactManagerTemplateDay(staffId,oldWeek,oldDay);
+    }
+    await logActivity('ROUTE_TEMPLATE_UPDATED','DEALER',d.id,{action:'ADD_TO_DAY',staffId,week,day});
+    await loadManagerRouteTemplate();
+  }catch(err){
+    alert('Bayi plana eklenemedi: '+(err.message||err));
+  }
+}
+
+async function managerTemplateRemoveDealer(index){
+  const d=managerTemplateStops[index];
+  if(!d)return;
+  const {staffId,week,day}=managerTemplateSelection();
+  if(!confirm(d.name+' '+week+' '+day+' planından çıkarılsın mı?\n\nBayi silinmez; sadece bu günün rut planından çıkarılır.'))return;
+
+  try{
+    await updateManagerTemplateDealer(d,{plannedWeek:null,plannedDay:null,plannedOrder:null});
+    managerTemplateStops.splice(index,1);
+    await persistManagerTemplateOrder();
+    await logActivity('ROUTE_TEMPLATE_UPDATED','DEALER',d.id,{action:'REMOVE_FROM_DAY',staffId,week,day});
+    await loadManagerRouteTemplate();
+  }catch(err){
+    alert('Bayi plandan çıkarılamadı: '+(err.message||err));
+  }
+}
+
+async function managerTemplateMoveDealer(index,delta){
+  const target=index+delta;
+  if(target<0||target>=managerTemplateStops.length)return;
+  const tmp=managerTemplateStops[index];
+  managerTemplateStops[index]=managerTemplateStops[target];
+  managerTemplateStops[target]=tmp;
+
+  try{
+    await persistManagerTemplateOrder();
+    const {staffId,week,day}=managerTemplateSelection();
+    await logActivity('ROUTE_TEMPLATE_UPDATED','ROUTE',staffId,{action:'REORDER_DAY',week,day});
+    await loadManagerRouteTemplate();
+  }catch(err){
+    alert('Plan sırası güncellenemedi: '+(err.message||err));
+  }
+}
 
 let managerCurrentRouteId=null;
 let managerCurrentRouteStops=[];
