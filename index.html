@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260928-5"/>
+  <link rel="stylesheet" href="/styles.css?v=20260930-2"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -71,6 +71,7 @@
     <button id="routeNavBtn" data-section="route">Rut Planı</button>
     <button data-section="payments">Ödemeler</button>
     <button data-section="meetings">Toplantı Notları</button>
+    <button data-section="personalnotes">Kendime Not</button>
     <button id="dailyReportNavBtn" data-section="dailyreport">Gün Sonu Raporu</button>
     <button data-section="dealers">Bayiler</button>
     <button data-section="zcodes">Z Kodlu Bayiler</button>
@@ -226,6 +227,64 @@
             </select>
           </div>
           <div id="meetingNotesList" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="personalnotes" class="section">
+      <div class="grid">
+        <div class="card span-4">
+          <h3>Kendime Not</h3>
+          <div class="muted">İş, bayi veya İlke Saha sistemiyle ilgili aklına gelenleri kendin için kaydet. Bu notları yalnızca sen görebilirsin.</div>
+          <label>Başlık</label>
+          <input id="personalNoteTitle" placeholder="Örn. Saha2 rut planını kontrol et">
+          <label>Not</label>
+          <textarea id="personalNoteBody" placeholder="Detayı buraya yaz..."></textarea>
+          <div class="row">
+            <div>
+              <label>Kategori</label>
+              <select id="personalNoteCategory">
+                <option value="GENEL">Genel</option>
+                <option value="IS">İş</option>
+                <option value="SISTEM">Sistem</option>
+                <option value="BAYI">Bayi</option>
+                <option value="FIKIR">Fikir</option>
+                <option value="YAPILACAK">Yapılacak</option>
+              </select>
+            </div>
+            <div>
+              <label>Hatırlatma / hedef tarihi</label>
+              <input id="personalNoteDueDate" type="date">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="savePersonalNote()">+ Notu Kaydet</button>
+        </div>
+        <div class="card span-8">
+          <div class="toolbar" style="justify-content:space-between;align-items:flex-end">
+            <div>
+              <h3 style="margin:0">Notlarım</h3>
+              <div id="personalNotesStatus" class="muted">Notların yükleniyor…</div>
+            </div>
+            <div class="toolbar" style="margin:0;flex-wrap:wrap">
+              <input id="personalNoteSearch" placeholder="Notlarda ara..." style="max-width:220px" oninput="renderPersonalNotes()">
+              <select id="personalNoteCategoryFilter" style="max-width:160px" onchange="renderPersonalNotes()">
+                <option value="ALL">Tüm kategoriler</option>
+                <option value="GENEL">Genel</option>
+                <option value="IS">İş</option>
+                <option value="SISTEM">Sistem</option>
+                <option value="BAYI">Bayi</option>
+                <option value="FIKIR">Fikir</option>
+                <option value="YAPILACAK">Yapılacak</option>
+              </select>
+              <select id="personalNoteFilter" style="max-width:150px" onchange="renderPersonalNotes()">
+                <option value="OPEN">Açık</option>
+                <option value="ALL">Tümü</option>
+                <option value="DONE">Tamamlanan</option>
+              </select>
+              <button class="btn btn-ghost" onclick="preparePersonalNotes(true)">↻ Yenile</button>
+            </div>
+          </div>
+          <div id="personalNotesList" class="list" style="margin-top:12px"></div>
         </div>
       </div>
     </section>
@@ -510,27 +569,28 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260928-5"></script>
-<script src="/seed-01.js?v=20260928-5"></script>
-<script src="/seed-02.js?v=20260928-5"></script>
-<script src="/seed-03.js?v=20260928-5"></script>
-<script src="/seed-04.js?v=20260928-5"></script>
-<script src="/seed-05.js?v=20260928-5"></script>
-<script src="/seed-06.js?v=20260928-5"></script>
-<script src="/seed-07.js?v=20260928-5"></script>
-<script src="/seed-08.js?v=20260928-5"></script>
-<script src="/seed-09.js?v=20260928-5"></script>
-<script src="/seed-10.js?v=20260928-5"></script>
-<script src="/seed-11.js?v=20260928-5"></script>
-<script src="/app-01.js?v=20260928-5"></script>
-<script src="/app-02.js?v=20260928-5"></script>
-<script src="/app-03.js?v=20260928-5"></script>
-<script src="/meetings.js?v=20260928-5"></script>
-<script src="/cloud.js?v=20260928-5"></script>
-<script src="/z-code.js?v=20260928-5"></script>
-<script src="/manager.js?v=20260928-5"></script>
-<script src="/dealer-management.js?v=20260928-5"></script>
-<script src="/daily-report.js?v=20260928-5"></script>
+<script src="/supabase-config.js?v=20260930-2"></script>
+<script src="/seed-01.js?v=20260930-2"></script>
+<script src="/seed-02.js?v=20260930-2"></script>
+<script src="/seed-03.js?v=20260930-2"></script>
+<script src="/seed-04.js?v=20260930-2"></script>
+<script src="/seed-05.js?v=20260930-2"></script>
+<script src="/seed-06.js?v=20260930-2"></script>
+<script src="/seed-07.js?v=20260930-2"></script>
+<script src="/seed-08.js?v=20260930-2"></script>
+<script src="/seed-09.js?v=20260930-2"></script>
+<script src="/seed-10.js?v=20260930-2"></script>
+<script src="/seed-11.js?v=20260930-2"></script>
+<script src="/app-01.js?v=20260930-2"></script>
+<script src="/app-02.js?v=20260930-2"></script>
+<script src="/app-03.js?v=20260930-2"></script>
+<script src="/meetings.js?v=20260930-2"></script>
+<script src="/personal-notes.js?v=20260930-2"></script>
+<script src="/cloud.js?v=20260930-2"></script>
+<script src="/z-code.js?v=20260930-2"></script>
+<script src="/manager.js?v=20260930-2"></script>
+<script src="/dealer-management.js?v=20260930-2"></script>
+<script src="/daily-report.js?v=20260930-2"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
