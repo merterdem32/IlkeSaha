@@ -220,6 +220,7 @@ function activateSection(sectionId){
   if(sectionId==='settings') setTimeout(()=>{initHomeMap();homeMap.invalidateSize();},50);
   if(sectionId==='management' && typeof renderManagementDashboard==='function') setTimeout(()=>renderManagementDashboard(),50);
   if(sectionId==='dailyreport' && typeof prepareDailyReportControls==='function') setTimeout(()=>prepareDailyReportControls(),50);
+  if(sectionId==='potentialDealers' && typeof preparePotentialDealers==='function') setTimeout(()=>preparePotentialDealers(),50);
   if(sectionId==='personalnotes' && typeof preparePersonalNotes==='function') setTimeout(()=>preparePersonalNotes(),50);
   if(sectionId==='zcodes' && typeof prepareZCodePage==='function') setTimeout(()=>prepareZCodePage(),50);
   if(sectionId==='inactiveDealers' && typeof renderInactiveDealers==='function') setTimeout(()=>renderInactiveDealers(),50);
