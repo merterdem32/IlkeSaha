@@ -144,6 +144,8 @@ function formatActivityAction(action){
     UPDATE_USER:'Kullanıcı bilgileri güncellendi',
     ROUTE_UPDATED:'Günlük rut güncellendi',
     ROUTE_TEMPLATE_UPDATED:'2 haftalık rut planı güncellendi',
+    POTENTIAL_VISIT_ADDED:'Potansiyel bayi ziyareti eklendi',
+    POTENTIAL_CONVERTED:'Potansiyel bayi aktif bayiye dönüştürüldü',
     ROUTE_PUBLISHED:'Günlük rut onaylandı ve paylaşıldı',
     DEALERS_IMPORTED:'Excel ile bayiler yüklendi'
   };
