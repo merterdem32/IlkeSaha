@@ -147,6 +147,8 @@ function formatActivityAction(action){
     POTENTIAL_VISIT_ADDED:'Potansiyel bayi ziyareti eklendi',
     POTENTIAL_VISIT_UPDATED:'Potansiyel bayi ziyareti güncellendi',
     POTENTIAL_VISIT_DELETED:'Potansiyel bayi ziyareti silindi',
+    POTENTIAL_DEALER_UPDATED:'Potansiyel bayi bilgileri güncellendi',
+    POTENTIAL_DEALER_DELETED:'Potansiyel bayi tamamen silindi',
     POTENTIAL_CONVERTED:'Potansiyel bayi aktif bayiye dönüştürüldü',
     ROUTE_PUBLISHED:'Günlük rut onaylandı ve paylaşıldı',
     DEALERS_IMPORTED:'Excel ile bayiler yüklendi'
