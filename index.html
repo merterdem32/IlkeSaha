@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20260930-2"/>
+  <link rel="stylesheet" href="/styles.css?v=20261001-1"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -74,6 +74,7 @@
     <button data-section="personalnotes">Kendime Not</button>
     <button id="dailyReportNavBtn" data-section="dailyreport">Gün Sonu Raporu</button>
     <button data-section="dealers">Bayiler</button>
+    <button data-section="potentialDealers">Potansiyel Bayiler</button>
     <button data-section="zcodes">Z Kodlu Bayiler</button>
     <button data-section="inactiveDealers">Rut Dışı Bayiler</button>
     <button data-section="mapsec">Harita</button>
@@ -110,6 +111,29 @@
         <div style="overflow:auto"><table><thead><tr><th>Bayi</th><th>Yetkili</th><th>Adres</th><th>Konum</th><th>Son ziyaret</th><th class="manager-only-col">Sorumlu</th><th class="manager-only-col">Son ziyaret eden</th><th></th></tr></thead><tbody id="dealerRows"></tbody></table></div>
       </div>
     </section>
+    <section id="potentialDealers" class="section">
+      <div class="card">
+        <div class="toolbar" style="justify-content:space-between;align-items:flex-end">
+          <div>
+            <h2 style="margin:0">Potansiyel Bayiler</h2>
+            <div class="muted">Henüz aktif bayimiz olmayan firmaları, rota dışı ziyaretleri ve görüşme geçmişini burada takip et.</div>
+          </div>
+          <div class="toolbar" style="margin:0;flex-wrap:wrap">
+            <input id="potentialDealerSearch" placeholder="Firma, yetkili, telefon, ilçe ara..." style="max-width:260px" oninput="renderPotentialDealers()">
+            <select id="potentialDealerFilter" style="max-width:180px" onchange="renderPotentialDealers()">
+              <option value="POTENTIAL">Aktif potansiyeller</option>
+              <option value="CONVERTED">Bayilere aktarılanlar</option>
+              <option value="ALL">Tümü</option>
+            </select>
+            <button class="btn btn-primary" onclick="openOutOfRouteVisit()">+ Rota Dışı Ziyaret</button>
+            <button class="btn btn-ghost" onclick="preparePotentialDealers(true)">↻ Yenile</button>
+          </div>
+        </div>
+        <div id="potentialDealerStatus" class="muted" style="margin:10px 0">Potansiyel bayiler yükleniyor…</div>
+        <div id="potentialDealerList" class="list"></div>
+      </div>
+    </section>
+
     <section id="zcodes" class="section">
       <div class="grid">
         <div class="card span-6">
@@ -190,6 +214,9 @@
           <div class="muted"><strong>Bugün kullanacağın kaynak planı seç</strong></div>
           <label>Hafta</label><select id="planWeek"><option>1. HAFTA</option><option>2. HAFTA</option></select>
           <label>Gün</label><select id="planDay"><option>PAZARTESİ</option><option>SALI</option><option>ÇARŞAMBA</option><option>PERŞEMBE</option><option>CUMA</option><option>CUMARTESİ</option></select>
+          <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="openOutOfRouteVisit()">+ Rota Dışı Ziyaret Ekle</button>
+          <div class="muted" style="margin-top:6px">Rutunda olmayan yeni bir firmayı ziyaret ettiysen firma ve görüşme bilgilerini buradan kaydet.</div>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0">
           <button class="btn btn-ghost" style="margin-top:10px;width:100%" onclick="loadOriginalPlan()">Seçili Planı Bugüne Yükle</button>
           <button class="btn btn-accent" style="margin-top:12px;width:100%" onclick="buildRoute()">En Mantıklı Rutu Oluştur</button>
           <div id="routePublishStatus" class="muted" style="margin-top:12px">Bugünkü rut henüz yöneticiyle paylaşılmadı.</div>
@@ -556,6 +583,38 @@
   </div>
 </div></dialog>
 
+<dialog id="potentialVisitDialog"><div class="modal">
+  <h3 id="potentialVisitTitle">Rota Dışı Ziyaret Ekle</h3>
+  <input type="hidden" id="potentialSourceId">
+  <div id="potentialFirmFields">
+    <label>Firma adı</label>
+    <input id="potentialName" placeholder="Firma / işletme adı">
+    <div class="row">
+      <div><label>Yetkili</label><input id="potentialContact" placeholder="Ad Soyad"></div>
+      <div><label>Telefon</label><input id="potentialPhone" placeholder="05..."></div>
+    </div>
+    <label>İlçe / Bölge</label>
+    <input id="potentialDistrict" placeholder="Örn. Bağcılar">
+    <label>Adres</label>
+    <textarea id="potentialAddress" placeholder="Firma adresi"></textarea>
+    <div class="row">
+      <div><label>Enlem</label><input id="potentialLat" type="number" step="0.000001"></div>
+      <div><label>Boylam</label><input id="potentialLng" type="number" step="0.000001"></div>
+    </div>
+    <button class="btn btn-ghost" type="button" style="margin-top:8px;width:100%" onclick="useCurrentLocationForPotential()">📍 Mevcut Konumu Kullan</button>
+  </div>
+  <label>Ziyaret tarihi / saati</label>
+  <input id="potentialVisitDate" type="datetime-local">
+  <label>Görüşme notu</label>
+  <textarea id="potentialVisitNote" placeholder="Ne konuşuldu, ihtiyaç ne, teklif verildi mi, tekrar ne zaman aranacak..."></textarea>
+  <label>Takip tarihi</label>
+  <input id="potentialFollowUp" type="date">
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+    <button class="btn btn-ghost" onclick="potentialVisitDialog.close()">Vazgeç</button>
+    <button class="btn btn-primary" onclick="savePotentialVisit()">Kaydet</button>
+  </div>
+</div></dialog>
+
 <dialog id="detailDialog"><div class="modal"><div id="dealerDetail"></div><div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost" onclick="detailDialog.close()">Kapat</button></div></div></dialog>
 <dialog id="visitDialog"><div class="modal">
   <h3>Ziyaret Kaydı</h3><input type="hidden" id="visitDealerId"><label>Tarih / Saat</label><input id="visitDate" type="datetime-local"><label>Görüşme notu</label><textarea id="visitNote" placeholder="Fiyat sordu, sipariş ihtimali, rakip marka, tekrar aranacak konu..."></textarea><label>Sonraki takip tarihi</label><input id="visitFollowUp" type="date">
@@ -569,28 +628,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20260930-2"></script>
-<script src="/seed-01.js?v=20260930-2"></script>
-<script src="/seed-02.js?v=20260930-2"></script>
-<script src="/seed-03.js?v=20260930-2"></script>
-<script src="/seed-04.js?v=20260930-2"></script>
-<script src="/seed-05.js?v=20260930-2"></script>
-<script src="/seed-06.js?v=20260930-2"></script>
-<script src="/seed-07.js?v=20260930-2"></script>
-<script src="/seed-08.js?v=20260930-2"></script>
-<script src="/seed-09.js?v=20260930-2"></script>
-<script src="/seed-10.js?v=20260930-2"></script>
-<script src="/seed-11.js?v=20260930-2"></script>
-<script src="/app-01.js?v=20260930-2"></script>
-<script src="/app-02.js?v=20260930-2"></script>
-<script src="/app-03.js?v=20260930-2"></script>
-<script src="/meetings.js?v=20260930-2"></script>
-<script src="/personal-notes.js?v=20260930-2"></script>
-<script src="/cloud.js?v=20260930-2"></script>
-<script src="/z-code.js?v=20260930-2"></script>
-<script src="/manager.js?v=20260930-2"></script>
-<script src="/dealer-management.js?v=20260930-2"></script>
-<script src="/daily-report.js?v=20260930-2"></script>
+<script src="/supabase-config.js?v=20261001-1"></script>
+<script src="/seed-01.js?v=20261001-1"></script>
+<script src="/seed-02.js?v=20261001-1"></script>
+<script src="/seed-03.js?v=20261001-1"></script>
+<script src="/seed-04.js?v=20261001-1"></script>
+<script src="/seed-05.js?v=20261001-1"></script>
+<script src="/seed-06.js?v=20261001-1"></script>
+<script src="/seed-07.js?v=20261001-1"></script>
+<script src="/seed-08.js?v=20261001-1"></script>
+<script src="/seed-09.js?v=20261001-1"></script>
+<script src="/seed-10.js?v=20261001-1"></script>
+<script src="/seed-11.js?v=20261001-1"></script>
+<script src="/app-01.js?v=20261001-1"></script>
+<script src="/app-02.js?v=20261001-1"></script>
+<script src="/app-03.js?v=20261001-1"></script>
+<script src="/meetings.js?v=20261001-1"></script>
+<script src="/personal-notes.js?v=20261001-1"></script>
+<script src="/cloud.js?v=20261001-1"></script>
+<script src="/z-code.js?v=20261001-1"></script>
+<script src="/manager.js?v=20261001-1"></script>
+<script src="/potential-dealers.js?v=20261001-1"></script>
+<script src="/dealer-management.js?v=20261001-1"></script>
+<script src="/daily-report.js?v=20261001-1"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
