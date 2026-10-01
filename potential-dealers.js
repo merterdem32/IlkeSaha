@@ -91,6 +91,19 @@ function renderPotentialDealers(){
         '<div style="margin-top:5px">'+esc(last.note||'Not girilmedi')+'</div>'+
         (last.follow_up?'<div class="muted" style="margin-top:4px">Takip: '+esc(last.follow_up)+'</div>':'')+
       '</div>':'<div class="muted" style="margin-top:10px">Henüz görüşme kaydı yok.</div>')+
+      (visits.length?'<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Görüşme Geçmişi ('+visits.length+')</summary>'+
+        '<div class="list" style="margin-top:8px">'+visits.map(v=>{
+          const canEdit=teamContext.role==='MANAGER'||v.actor_user_id===cloudUser.id;
+          return '<div class="item">'+
+            '<strong>'+new Date(v.visit_date).toLocaleString('tr-TR')+'</strong>'+
+            '<div style="margin-top:5px">'+esc(v.note||'Not girilmedi')+'</div>'+
+            (v.follow_up?'<div class="muted" style="margin-top:4px">Takip: '+esc(v.follow_up)+'</div>':'')+
+            (canEdit?'<div class="toolbar" style="margin:8px 0 0">'+
+              '<button class="btn btn-ghost" onclick="openPotentialVisitEdit(\''+v.id+'\')">Düzenle</button>'+
+              '<button class="btn btn-danger" onclick="deletePotentialVisit(\''+v.id+'\')">Sil</button>'+
+            '</div>':'')+
+          '</div>';
+        }).join('')+'</div></details>':'')+
       '<div class="toolbar" style="margin:10px 0 0">'+
         (!converted?'<button class="btn btn-accent" onclick="openPotentialVisitDialog(\''+p.id+'\')">+ Görüşme Ekle</button>':'')+
         '<button class="btn btn-ghost" onclick="openPotentialDirections(\''+p.id+'\')">Yol Tarifi</button>'+
@@ -103,6 +116,7 @@ function renderPotentialDealers(){
 function openOutOfRouteVisit(){
   if(!cloudUser){alert('Önce giriş yapmalısın.');return}
   potentialSourceId.value='';
+  potentialVisitId.value='';
   potentialVisitTitle.textContent='Rota Dışı Ziyaret Ekle';
   potentialName.value='';
   potentialContact.value='';
@@ -122,6 +136,7 @@ function openPotentialVisitDialog(id){
   const p=potentialDealers.find(x=>x.id===id);
   if(!p)return;
   potentialSourceId.value=p.id;
+  potentialVisitId.value='';
   potentialVisitTitle.textContent=p.name+' • Görüşme Ekle';
   potentialName.value=p.name||'';
   potentialContact.value=p.contact||'';
@@ -137,6 +152,59 @@ function openPotentialVisitDialog(id){
   potentialVisitDialog.showModal();
 }
 
+function openPotentialVisitEdit(visitId){
+  const v=potentialVisits.find(x=>x.id===visitId);
+  if(!v)return;
+  const p=potentialDealers.find(x=>x.id===v.potential_dealer_id);
+  if(!p)return;
+
+  if(teamContext.role!=='MANAGER'&&v.actor_user_id!==cloudUser.id){
+    alert('Bu görüşme kaydını yalnızca kaydı oluşturan personel veya yönetici düzenleyebilir.');
+    return;
+  }
+
+  potentialSourceId.value=p.id;
+  potentialVisitId.value=v.id;
+  potentialVisitTitle.textContent=p.name+' • Görüşmeyi Düzenle';
+  potentialName.value=p.name||'';
+  potentialContact.value=p.contact||'';
+  potentialPhone.value=p.phone||'';
+  potentialDistrict.value=p.district||'';
+  potentialAddress.value=p.address||'';
+  potentialLat.value=p.lat??'';
+  potentialLng.value=p.lng??'';
+  const d=new Date(v.visit_date);
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  potentialVisitDate.value=d.toISOString().slice(0,16);
+  potentialVisitNote.value=v.note||'';
+  potentialFollowUp.value=v.follow_up||'';
+  potentialFirmFields.style.display='none';
+  potentialVisitDialog.showModal();
+}
+
+async function deletePotentialVisit(visitId){
+  const v=potentialVisits.find(x=>x.id===visitId);
+  if(!v)return;
+  const p=potentialDealers.find(x=>x.id===v.potential_dealer_id);
+  if(!confirm((p?.name||'Firma')+' için '+new Date(v.visit_date).toLocaleString('tr-TR')+' tarihli görüşme kaydı silinsin mi?'))return;
+
+  const {error}=await supabaseClient.from('potential_visits')
+    .delete()
+    .eq('id',visitId)
+    .eq('organization_id',teamContext.organizationId);
+
+  if(error){
+    alert('Görüşme silinemedi: '+error.message);
+    return;
+  }
+
+  if(typeof logActivity==='function'){
+    logActivity('POTENTIAL_VISIT_DELETED','POTENTIAL_DEALER',v.potential_dealer_id,{visitId});
+  }
+
+  await preparePotentialDealers(true);
+}
+
 function useCurrentLocationForPotential(){
   if(!navigator.geolocation){alert('Tarayıcı konum desteği yok.');return}
   navigator.geolocation.getCurrentPosition(pos=>{
@@ -150,6 +218,7 @@ function useCurrentLocationForPotential(){
 async function savePotentialVisit(){
   if(!cloudUser||!supabaseClient)return;
   const existingId=potentialSourceId.value;
+  const editVisitId=potentialVisitId.value;
   let potentialId=existingId;
 
   if(!existingId){
@@ -184,14 +253,28 @@ async function savePotentialVisit(){
   }
 
   const note=potentialVisitNote.value.trim();
-  const {error:vError}=await supabaseClient.from('potential_visits').insert({
-    organization_id:teamContext.organizationId,
-    potential_dealer_id:potentialId,
-    actor_user_id:cloudUser.id,
+  const visitPayload={
     visit_date:new Date(potentialVisitDate.value||dtLocalNow()).toISOString(),
     note:note||null,
     follow_up:potentialFollowUp.value||null
-  });
+  };
+
+  let vError=null;
+  if(editVisitId){
+    const result=await supabaseClient.from('potential_visits')
+      .update(visitPayload)
+      .eq('id',editVisitId)
+      .eq('organization_id',teamContext.organizationId);
+    vError=result.error;
+  }else{
+    const result=await supabaseClient.from('potential_visits').insert({
+      organization_id:teamContext.organizationId,
+      potential_dealer_id:potentialId,
+      actor_user_id:cloudUser.id,
+      ...visitPayload
+    });
+    vError=result.error;
+  }
 
   if(vError){
     alert('Görüşme kaydedilemedi: '+vError.message);
@@ -199,13 +282,13 @@ async function savePotentialVisit(){
   }
 
   if(typeof logActivity==='function'){
-    logActivity('POTENTIAL_VISIT_ADDED','POTENTIAL_DEALER',potentialId,{});
+    logActivity(editVisitId?'POTENTIAL_VISIT_UPDATED':'POTENTIAL_VISIT_ADDED','POTENTIAL_DEALER',potentialId,{visitId:editVisitId||null});
   }
 
   potentialVisitDialog.close();
   await preparePotentialDealers(true);
   if(document.getElementById('potentialDealers')?.classList.contains('active'))renderPotentialDealers();
-  alert('Rota dışı ziyaret kaydedildi.');
+  alert(editVisitId?'Görüşme kaydı güncellendi.':'Rota dışı ziyaret kaydedildi.');
 }
 
 function openPotentialDirections(id){
