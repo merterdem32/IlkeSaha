@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20261001-2"/>
+  <link rel="stylesheet" href="/styles.css?v=20261001-3"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -583,6 +583,29 @@
   </div>
 </div></dialog>
 
+<dialog id="potentialDealerEditDialog"><div class="modal">
+  <h3>Potansiyel Bayi Bilgilerini Düzenle</h3>
+  <input type="hidden" id="potentialDealerEditId">
+  <label>Firma adı</label>
+  <input id="potentialDealerEditName" placeholder="Firma / işletme adı">
+  <div class="row">
+    <div><label>Yetkili</label><input id="potentialDealerEditContact" placeholder="Ad Soyad"></div>
+    <div><label>Telefon</label><input id="potentialDealerEditPhone" placeholder="05..."></div>
+  </div>
+  <label>İlçe / Bölge</label>
+  <input id="potentialDealerEditDistrict" placeholder="Örn. Bağcılar">
+  <label>Adres</label>
+  <textarea id="potentialDealerEditAddress" placeholder="Firma adresi"></textarea>
+  <div class="row">
+    <div><label>Enlem</label><input id="potentialDealerEditLat" type="number" step="0.000001"></div>
+    <div><label>Boylam</label><input id="potentialDealerEditLng" type="number" step="0.000001"></div>
+  </div>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+    <button class="btn btn-ghost" onclick="potentialDealerEditDialog.close()">Vazgeç</button>
+    <button class="btn btn-primary" onclick="savePotentialDealerEdit()">Kaydet</button>
+  </div>
+</div></dialog>
+
 <dialog id="potentialVisitDialog"><div class="modal">
   <h3 id="potentialVisitTitle">Rota Dışı Ziyaret Ekle</h3>
   <input type="hidden" id="potentialSourceId">
@@ -629,29 +652,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20261001-2"></script>
-<script src="/seed-01.js?v=20261001-2"></script>
-<script src="/seed-02.js?v=20261001-2"></script>
-<script src="/seed-03.js?v=20261001-2"></script>
-<script src="/seed-04.js?v=20261001-2"></script>
-<script src="/seed-05.js?v=20261001-2"></script>
-<script src="/seed-06.js?v=20261001-2"></script>
-<script src="/seed-07.js?v=20261001-2"></script>
-<script src="/seed-08.js?v=20261001-2"></script>
-<script src="/seed-09.js?v=20261001-2"></script>
-<script src="/seed-10.js?v=20261001-2"></script>
-<script src="/seed-11.js?v=20261001-2"></script>
-<script src="/app-01.js?v=20261001-2"></script>
-<script src="/app-02.js?v=20261001-2"></script>
-<script src="/app-03.js?v=20261001-2"></script>
-<script src="/meetings.js?v=20261001-2"></script>
-<script src="/personal-notes.js?v=20261001-2"></script>
-<script src="/cloud.js?v=20261001-2"></script>
-<script src="/z-code.js?v=20261001-2"></script>
-<script src="/manager.js?v=20261001-2"></script>
-<script src="/potential-dealers.js?v=20261001-2"></script>
-<script src="/dealer-management.js?v=20261001-2"></script>
-<script src="/daily-report.js?v=20261001-2"></script>
+<script src="/supabase-config.js?v=20261001-3"></script>
+<script src="/seed-01.js?v=20261001-3"></script>
+<script src="/seed-02.js?v=20261001-3"></script>
+<script src="/seed-03.js?v=20261001-3"></script>
+<script src="/seed-04.js?v=20261001-3"></script>
+<script src="/seed-05.js?v=20261001-3"></script>
+<script src="/seed-06.js?v=20261001-3"></script>
+<script src="/seed-07.js?v=20261001-3"></script>
+<script src="/seed-08.js?v=20261001-3"></script>
+<script src="/seed-09.js?v=20261001-3"></script>
+<script src="/seed-10.js?v=20261001-3"></script>
+<script src="/seed-11.js?v=20261001-3"></script>
+<script src="/app-01.js?v=20261001-3"></script>
+<script src="/app-02.js?v=20261001-3"></script>
+<script src="/app-03.js?v=20261001-3"></script>
+<script src="/meetings.js?v=20261001-3"></script>
+<script src="/personal-notes.js?v=20261001-3"></script>
+<script src="/cloud.js?v=20261001-3"></script>
+<script src="/z-code.js?v=20261001-3"></script>
+<script src="/manager.js?v=20261001-3"></script>
+<script src="/potential-dealers.js?v=20261001-3"></script>
+<script src="/dealer-management.js?v=20261001-3"></script>
+<script src="/daily-report.js?v=20261001-3"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
