@@ -104,13 +104,105 @@ function renderPotentialDealers(){
             '</div>':'')+
           '</div>';
         }).join('')+'</div></details>':'')+
-      '<div class="toolbar" style="margin:10px 0 0">'+
+      '<div class="toolbar" style="margin:10px 0 0;flex-wrap:wrap">'+
         (!converted?'<button class="btn btn-accent" onclick="openPotentialVisitDialog(\''+p.id+'\')">+ Görüşme Ekle</button>':'')+
         '<button class="btn btn-ghost" onclick="openPotentialDirections(\''+p.id+'\')">Yol Tarifi</button>'+
+        (!converted?'<button class="btn btn-ghost" onclick="openPotentialDealerEdit(\''+p.id+'\')">Firma Bilgilerini Düzenle</button>':'')+
         (!converted?'<button class="btn btn-primary" onclick="convertPotentialToDealer(\''+p.id+'\')">Bayilere Ekle</button>':'')+
+        (!converted?'<button class="btn btn-danger" onclick="deletePotentialDealer(\''+p.id+'\')">Potansiyel Kaydı Sil</button>':'')+
       '</div>'+
     '</div>';
   }).join(''):'<div class="muted">Bu filtrede potansiyel bayi bulunamadı.</div>';
+}
+
+function openPotentialDealerEdit(id){
+  const p=potentialDealers.find(x=>x.id===id);
+  if(!p)return;
+
+  if(teamContext.role!=='MANAGER'&&p.owner_user_id!==cloudUser.id&&p.assigned_user_id!==cloudUser.id){
+    alert('Bu potansiyel bayi kaydını düzenleme yetkin yok.');
+    return;
+  }
+
+  potentialDealerEditId.value=p.id;
+  potentialDealerEditName.value=p.name||'';
+  potentialDealerEditContact.value=p.contact||'';
+  potentialDealerEditPhone.value=p.phone||'';
+  potentialDealerEditDistrict.value=p.district||'';
+  potentialDealerEditAddress.value=p.address||'';
+  potentialDealerEditLat.value=p.lat??'';
+  potentialDealerEditLng.value=p.lng??'';
+  potentialDealerEditDialog.showModal();
+}
+
+async function savePotentialDealerEdit(){
+  const id=potentialDealerEditId.value;
+  const p=potentialDealers.find(x=>x.id===id);
+  if(!p)return;
+
+  const name=potentialDealerEditName.value.trim();
+  if(!name){alert('Firma adı gerekli.');return}
+
+  const latRaw=potentialDealerEditLat.value.trim();
+  const lngRaw=potentialDealerEditLng.value.trim();
+  const lat=latRaw===''?null:Number(latRaw);
+  const lng=lngRaw===''?null:Number(lngRaw);
+  if((lat!==null||lng!==null)&&!isValidDealerCoordinate(lat,lng)){
+    alert('Koordinat geçersiz.');
+    return;
+  }
+
+  const {error}=await supabaseClient.from('potential_dealers').update({
+    name,
+    contact:potentialDealerEditContact.value.trim()||null,
+    phone:potentialDealerEditPhone.value.trim()||null,
+    district:potentialDealerEditDistrict.value.trim()||null,
+    address:potentialDealerEditAddress.value.trim()||null,
+    lat,
+    lng,
+    updated_at:new Date().toISOString()
+  }).eq('id',id).eq('organization_id',teamContext.organizationId);
+
+  if(error){
+    alert('Potansiyel bayi güncellenemedi: '+error.message);
+    return;
+  }
+
+  if(typeof logActivity==='function'){
+    logActivity('POTENTIAL_DEALER_UPDATED','POTENTIAL_DEALER',id,{name});
+  }
+
+  potentialDealerEditDialog.close();
+  await preparePotentialDealers(true);
+  alert('Potansiyel bayi bilgileri güncellendi.');
+}
+
+async function deletePotentialDealer(id){
+  const p=potentialDealers.find(x=>x.id===id);
+  if(!p)return;
+
+  const visits=potentialVisits.filter(v=>v.potential_dealer_id===id);
+  const msg=p.name+' potansiyel bayi kaydı tamamen silinsin mi?'+
+    (visits.length?'\n\nBu firmaya ait '+visits.length+' görüşme/ziyaret kaydı da silinecek.':'')+
+    '\n\nBu işlem geri alınamaz.';
+  if(!confirm(msg))return;
+
+  const {error}=await supabaseClient.from('potential_dealers')
+    .delete()
+    .eq('id',id)
+    .eq('organization_id',teamContext.organizationId);
+
+  if(error){
+    alert('Potansiyel bayi silinemedi: '+error.message);
+    return;
+  }
+
+  if(typeof logActivity==='function'){
+    logActivity('POTENTIAL_DEALER_DELETED','POTENTIAL_DEALER',id,{name:p.name,visitCount:visits.length});
+  }
+
+  await preparePotentialDealers(true);
+  alert('Potansiyel bayi ve ona bağlı görüşme kayıtları silindi.');
 }
 
 function openOutOfRouteVisit(){
