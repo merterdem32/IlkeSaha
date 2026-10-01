@@ -71,12 +71,22 @@ async function loadDailyReport(){
     .eq('organization_id',teamContext.organizationId)
     .gte('created_at',start).lt('created_at',end);
 
+  let pvq=supabaseClient.from('potential_visits')
+    .select('id,potential_dealer_id,actor_user_id,visit_date,note,follow_up,created_at')
+    .eq('organization_id',teamContext.organizationId)
+    .gte('visit_date',start).lt('visit_date',end);
+
   vq=vq.eq('actor_user_id',staffId);
   pq=pq.eq('actor_user_id',staffId);
+  pvq=pvq.eq('actor_user_id',staffId);
 
-  let [vRes,pRes]=await Promise.all([vq,pq]);
+  let [vRes,pRes,pvRes]=await Promise.all([vq,pq,pvq]);
   if(vRes.error){
     summary.textContent='Ziyaretler yüklenemedi: '+vRes.error.message;
+    return;
+  }
+  if(pvRes.error){
+    summary.textContent='Rota dışı ziyaretler yüklenemedi: '+pvRes.error.message;
     return;
   }
 
@@ -99,6 +109,7 @@ async function loadDailyReport(){
 
   const visits=vRes.data||[];
   const payments=pRes.data||[];
+  const potentialRows=pvRes.data||[];
   const grouped=new Map();
 
   visits.forEach(v=>{
@@ -115,6 +126,36 @@ async function loadDailyReport(){
     const tb=new Date(b.visits[0]?.visit_date||0);
     return ta-tb;
   });
+
+  const potentialIds=[...new Set(potentialRows.map(v=>v.potential_dealer_id).filter(Boolean))];
+  let potentialCompanies=[];
+  if(potentialIds.length){
+    const {data:pdData,error:pdError}=await supabaseClient.from('potential_dealers')
+      .select('id,name,contact,phone,district,address,status')
+      .eq('organization_id',teamContext.organizationId)
+      .in('id',potentialIds);
+    if(pdError){
+      summary.textContent='Potansiyel firma bilgileri yüklenemedi: '+pdError.message;
+      return;
+    }
+    potentialCompanies=pdData||[];
+  }
+  const potentialCompanyMap=new Map(potentialCompanies.map(p=>[p.id,p]));
+  const potentialGrouped=new Map();
+  potentialRows.forEach(v=>{
+    const id=v.potential_dealer_id;
+    if(!potentialGrouped.has(id))potentialGrouped.set(id,{potentialId:id,visits:[],notes:[],followUps:[]});
+    const g=potentialGrouped.get(id);
+    g.visits.push(v);
+    if(String(v.note||'').trim())g.notes.push(String(v.note).trim());
+    if(String(v.follow_up||'').trim())g.followUps.push(String(v.follow_up).trim());
+  });
+  const potentialEntries=[...potentialGrouped.values()].sort((a,b)=>{
+    const ta=new Date(a.visits[0]?.visit_date||0);
+    const tb=new Date(b.visits[0]?.visit_date||0);
+    return ta-tb;
+  });
+  const totalVisits=entries.length+potentialEntries.length;
 
   const staffName=salespersonLabel(staffId);
   const dateLabel=new Date(date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
@@ -138,6 +179,23 @@ async function loadDailyReport(){
     '</div>';
   }).join('');
 
+  const potentialReportRows=potentialEntries.map((g,i)=>{
+    const p=potentialCompanyMap.get(g.potentialId)||{};
+    const notes=[...new Set(g.notes)];
+    const follows=[...new Set(g.followUps)];
+    const firstTime=g.visits.map(v=>new Date(v.visit_date)).sort((a,b)=>a-b)[0];
+
+    return '<div style="border:1px solid #f1c36b;border-radius:10px;padding:12px;margin:0 0 10px;page-break-inside:avoid;background:#fffaf0">'+
+      '<div style="font-size:16px;font-weight:700">'+(i+1)+'. '+esc(p.name||g.potentialId)+'</div>'+
+      '<div style="font-size:12px;color:#64748b;margin-top:3px">'+
+        esc(p.district||'')+(firstTime?' • '+firstTime.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'')+
+        ' • Rota dışı / potansiyel firma'+
+      '</div>'+
+      '<div style="margin-top:8px"><strong>Görüşme Notu:</strong> '+(notes.length?notes.map(esc).join('<br>'):'Not girilmedi')+'</div>'+
+      (follows.length?'<div style="margin-top:6px"><strong>Takip:</strong> '+follows.map(esc).join(', ')+'</div>':'')+
+    '</div>';
+  }).join('');
+
   const paymentRows=payments.length?payments.map(p=>{
     const d=state.dealers.find(x=>x.id===p.dealer_id);
     return '<div style="font-size:13px;margin:4px 0">• '+esc(d?.name||p.dealer_id)+' — '+fmtMoney(p.amount)+' — söz: '+esc(p.promise_date||'-')+(p.note?' — '+esc(p.note):'')+'</div>';
@@ -149,12 +207,16 @@ async function loadDailyReport(){
       '<div style="margin-top:4px">'+esc(dateLabel)+' • '+esc(staffName)+'</div>'+
     '</div>'+
     '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px">'+
-      '<div><strong>'+entries.length+'</strong> ziyaret edilen bayi</div>'+
+      '<div><strong>'+totalVisits+'</strong> toplam ziyaret</div>'+
+      '<div><strong>'+entries.length+'</strong> mevcut bayi</div>'+
+      '<div><strong>'+potentialEntries.length+'</strong> potansiyel firma</div>'+
       '<div><strong>'+payments.length+'</strong> ödeme sözü</div>'+
       '<div><strong>'+fmtMoney(totalAmount)+'</strong> ödeme sözü toplamı</div>'+
     '</div>'+
     '<h3 style="margin:0 0 10px">Bayi Görüşmeleri</h3>'+
-    (reportRows||'<div>Bu tarihte ziyaret kaydı yok.</div>')+
+    (reportRows||'<div>Bu tarihte mevcut bayi ziyareti yok.</div>')+
+    '<h3 style="margin:18px 0 8px">Rota Dışı / Potansiyel Firma Ziyaretleri</h3>'+
+    (potentialReportRows||'<div>Bu tarihte rota dışı ziyaret yok.</div>')+
     '<h3 style="margin:18px 0 8px">Ödeme Sözleri</h3>'+paymentRows+
     '<div style="margin-top:18px;font-size:11px;color:#64748b">İlke Saha tarafından oluşturuldu.</div>'+
   '</div>';
@@ -163,7 +225,9 @@ async function loadDailyReport(){
     '*İLKE AKÜ - GÜN SONU SAHA RAPORU*',
     dateLabel+' | '+staffName,
     '',
-    'Ziyaret edilen bayi: '+entries.length,
+    'Toplam ziyaret: '+totalVisits,
+    'Mevcut bayi ziyareti: '+entries.length,
+    'Rota dışı / potansiyel firma ziyareti: '+potentialEntries.length,
     'Ödeme sözü: '+payments.length+(payments.length?' / '+fmtMoney(totalAmount):''),
     '',
     '*BAYİ GÖRÜŞMELERİ*'
@@ -179,6 +243,20 @@ async function loadDailyReport(){
     if(follows.length)textLines.push('Takip: '+follows.join(', '));
   });
 
+  if(potentialEntries.length){
+    textLines.push('');
+    textLines.push('*ROTA DIŞI / POTANSİYEL FİRMA ZİYARETLERİ*');
+    potentialEntries.forEach((g,i)=>{
+      const p=potentialCompanyMap.get(g.potentialId)||{};
+      const notes=[...new Set(g.notes)];
+      const follows=[...new Set(g.followUps)];
+      textLines.push('');
+      textLines.push((i+1)+'. '+(p.name||g.potentialId)+(p.district?' - '+p.district:''));
+      textLines.push('Not: '+(notes.length?notes.join(' | '):'Not girilmedi'));
+      if(follows.length)textLines.push('Takip: '+follows.join(', '));
+    });
+  }
+
   if(payments.length){
     textLines.push('');
     textLines.push('*ÖDEME SÖZLERİ*');
@@ -192,11 +270,11 @@ async function loadDailyReport(){
     html,
     whatsappText:textLines.join('\n'),
     fileName:'IlkeSaha_'+date+'_'+String(staffName).replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ_-]+/g,'_')+'.pdf',
-    data:{date,staffId,entries,payments}
+    data:{date,staffId,entries,potentialEntries,payments}
   };
 
   preview.innerHTML=html;
-  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+esc(dateLabel)+' • '+entries.length+' bayi ziyareti • '+payments.length+' ödeme sözü'+
+  summary.innerHTML='<strong>'+esc(staffName)+'</strong> • '+esc(dateLabel)+' • '+totalVisits+' toplam ziyaret • '+entries.length+' mevcut bayi • '+potentialEntries.length+' potansiyel firma • '+payments.length+' ödeme sözü'+
     (paymentFallback?' • <span class="badge b-warn">Ödemeler geçici olarak söz tarihine göre gösteriliyor</span>':'');
 }
 
