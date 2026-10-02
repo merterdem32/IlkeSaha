@@ -457,27 +457,23 @@ async function syncStateToCloud(initial=false){
       if(error) throw new Error('Bayi kaydı: '+error.message);
     }
 
-    // Yalnızca mevcut kullanıcının oluşturduğu ziyaretleri uzlaştır.
-    // Başka personelin kayıtlarına dokunulmaz.
+    // Ziyaretlerde ASLA toplu sil + yeniden yaz yapma.
+    // Mobilde uygulama askıya alındığında veya iki cihaz/sekme kullanıldığında eski local state
+    // buluttaki yeni kayıtları silebiliyordu. Artık yalnızca mevcut local kayıtları upsert ediyoruz.
     const myVisits=state.visits.filter(v=>(v._ownerUserId||cloudUser.id)===cloudUser.id);
-    {
-      const {error:delErr}=await supabaseClient.from('visits')
-        .delete().eq('user_id',cloudUser.id);
-      if(delErr) throw delErr;
-
-      if(myVisits.length){
-        const rows=myVisits.map(v=>({
-          id:v.id,user_id:cloudUser.id,
-          organization_id:teamContext.organizationId,
-          actor_user_id:v._actorUserId||cloudUser.id,
-          dealer_id:v.dealerId,
-          visit_date:new Date(v.date).toISOString(),
-          note:v.note||null,follow_up:v.followUp||null,
-          updated_at:new Date().toISOString()
-        }));
-        const {error}=await supabaseClient.from('visits').insert(rows);
-        if(error) throw error;
-      }
+    if(myVisits.length){
+      const rows=myVisits.map(v=>({
+        id:v.id,user_id:cloudUser.id,
+        organization_id:teamContext.organizationId,
+        actor_user_id:v._actorUserId||cloudUser.id,
+        dealer_id:v.dealerId,
+        visit_date:new Date(v.date).toISOString(),
+        note:v.note||null,follow_up:v.followUp||null,
+        updated_at:new Date().toISOString()
+      }));
+      const {error}=await supabaseClient.from('visits')
+        .upsert(rows,{onConflict:'user_id,id'});
+      if(error) throw error;
     }
 
     const myPayments=state.payments.filter(p=>(p._ownerUserId||cloudUser.id)===cloudUser.id);
