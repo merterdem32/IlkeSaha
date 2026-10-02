@@ -454,3 +454,82 @@ function applyDealerMapPaste(){
     if(hint) hint.textContent='Koordinat alındı: '+coords.lat.toFixed(6)+', '+coords.lng.toFixed(6);
   }
 }
+
+
+async function recoverMyVisitNotesFromActivity(dateValue){
+  if(!cloudUser||!supabaseClient||!teamContext?.organizationId){
+    alert('Önce giriş yapmalısın.');
+    return;
+  }
+  const date=dateValue||document.getElementById('visitRecoveryDate')?.value||todayStr();
+  const start=new Date(date+'T00:00:00');
+  const end=new Date(start.getTime()+86400000);
+
+  try{
+    const [aRes,vRes]=await Promise.all([
+      supabaseClient.from('activity_log')
+        .select('id,actor_user_id,action,entity_id,details,created_at')
+        .eq('organization_id',teamContext.organizationId)
+        .eq('actor_user_id',cloudUser.id)
+        .eq('action','VISIT_ADDED')
+        .gte('created_at',start.toISOString())
+        .lt('created_at',end.toISOString())
+        .order('created_at',{ascending:true}),
+      supabaseClient.from('visits')
+        .select('id,user_id,actor_user_id,dealer_id,visit_date,note,follow_up')
+        .eq('organization_id',teamContext.organizationId)
+        .eq('actor_user_id',cloudUser.id)
+        .gte('visit_date',start.toISOString())
+        .lt('visit_date',end.toISOString())
+    ]);
+
+    if(aRes.error)throw aRes.error;
+    if(vRes.error)throw vRes.error;
+
+    const existing=vRes.data||[];
+    const candidates=(aRes.data||[]).filter(a=>{
+      const note=String(a.details?.note||'').trim();
+      if(!note||!a.entity_id)return false;
+      return !existing.some(v=>
+        v.dealer_id===a.entity_id &&
+        String(v.note||'').trim()===note
+      );
+    });
+
+    if(!candidates.length){
+      alert(date+' için aktivite kaydında bulunup ziyaret tablosunda eksik olan görüşme notu bulunamadı.');
+      return;
+    }
+
+    const dealerNames=candidates.map(a=>{
+      const d=state.dealers.find(x=>x.id===a.entity_id);
+      return '• '+(d?.name||a.entity_id)+' — '+String(a.details?.note||'').trim();
+    }).join('\n');
+
+    if(!confirm(
+      date+' tarihinde '+candidates.length+' kayıp görüşme notu bulundu:\n\n'+
+      dealerNames+'\n\nBunlar ziyaret kayıtlarına geri eklensin mi?'
+    ))return;
+
+    const rows=candidates.map(a=>({
+      id:crypto.randomUUID(),
+      user_id:cloudUser.id,
+      organization_id:teamContext.organizationId,
+      actor_user_id:cloudUser.id,
+      dealer_id:a.entity_id,
+      visit_date:a.created_at,
+      note:String(a.details?.note||'').trim()||null,
+      follow_up:null,
+      updated_at:new Date().toISOString()
+    }));
+
+    const {error}=await supabaseClient.from('visits').insert(rows);
+    if(error)throw error;
+
+    await loadStateFromCloud();
+    alert(rows.length+' görüşme notu başarıyla geri getirildi.');
+  }catch(err){
+    console.error('Visit recovery failed',err);
+    alert('Kurtarma işlemi başarısız: '+(err.message||err));
+  }
+}
