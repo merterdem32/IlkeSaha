@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="/styles.css?v=20261001-3"/>
+  <link rel="stylesheet" href="/styles.css?v=20261002-1"/>
 </head>
 <body class="auth-pending">
 <header>
@@ -471,7 +471,15 @@
           <button class="btn btn-primary" style="margin-top:10px" onclick="saveHome()">Kaydet</button>
           <button class="btn btn-ghost" style="margin-top:10px" onclick="useCurrentLocationForHome()">Mevcut konumumu kullan</button>
         </div>
-        <div class="card span-6"><h3>Veri</h3><div class="muted">Bu prototip verileri yalnızca bu tarayıcıda localStorage içinde saklar.</div><button class="btn btn-ghost" style="margin-top:12px" onclick="exportData()">Verileri JSON dışa aktar</button><button class="btn btn-danger" style="margin-top:12px" onclick="resetAll()">Tüm prototip verisini sil</button></div>
+        <div class="card span-6">
+          <h3>Veri ve Kurtarma</h3>
+          <div class="muted">Bulut kayıtlarını kullanır. Yanlışlıkla kaybolmuş görüşme notları aktivite geçmişinden kontrol edilip geri getirilebilir.</div>
+          <label>Kurtarılacak tarih</label>
+          <input id="visitRecoveryDate" type="date">
+          <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="recoverMyVisitNotesFromActivity()">Kayıp Görüşme Notlarını Kontrol Et / Kurtar</button>
+          <button class="btn btn-ghost" style="margin-top:12px" onclick="exportData()">Verileri JSON dışa aktar</button>
+          <button class="btn btn-danger" style="margin-top:12px" onclick="resetAll()">Tüm prototip verisini sil</button>
+        </div>
       </div>
     </section>
   </main>
@@ -652,29 +660,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
-<script src="/supabase-config.js?v=20261001-3"></script>
-<script src="/seed-01.js?v=20261001-3"></script>
-<script src="/seed-02.js?v=20261001-3"></script>
-<script src="/seed-03.js?v=20261001-3"></script>
-<script src="/seed-04.js?v=20261001-3"></script>
-<script src="/seed-05.js?v=20261001-3"></script>
-<script src="/seed-06.js?v=20261001-3"></script>
-<script src="/seed-07.js?v=20261001-3"></script>
-<script src="/seed-08.js?v=20261001-3"></script>
-<script src="/seed-09.js?v=20261001-3"></script>
-<script src="/seed-10.js?v=20261001-3"></script>
-<script src="/seed-11.js?v=20261001-3"></script>
-<script src="/app-01.js?v=20261001-3"></script>
-<script src="/app-02.js?v=20261001-3"></script>
-<script src="/app-03.js?v=20261001-3"></script>
-<script src="/meetings.js?v=20261001-3"></script>
-<script src="/personal-notes.js?v=20261001-3"></script>
-<script src="/cloud.js?v=20261001-3"></script>
-<script src="/z-code.js?v=20261001-3"></script>
-<script src="/manager.js?v=20261001-3"></script>
-<script src="/potential-dealers.js?v=20261001-3"></script>
-<script src="/dealer-management.js?v=20261001-3"></script>
-<script src="/daily-report.js?v=20261001-3"></script>
+<script src="/supabase-config.js?v=20261002-1"></script>
+<script src="/seed-01.js?v=20261002-1"></script>
+<script src="/seed-02.js?v=20261002-1"></script>
+<script src="/seed-03.js?v=20261002-1"></script>
+<script src="/seed-04.js?v=20261002-1"></script>
+<script src="/seed-05.js?v=20261002-1"></script>
+<script src="/seed-06.js?v=20261002-1"></script>
+<script src="/seed-07.js?v=20261002-1"></script>
+<script src="/seed-08.js?v=20261002-1"></script>
+<script src="/seed-09.js?v=20261002-1"></script>
+<script src="/seed-10.js?v=20261002-1"></script>
+<script src="/seed-11.js?v=20261002-1"></script>
+<script src="/app-01.js?v=20261002-1"></script>
+<script src="/app-02.js?v=20261002-1"></script>
+<script src="/app-03.js?v=20261002-1"></script>
+<script src="/meetings.js?v=20261002-1"></script>
+<script src="/personal-notes.js?v=20261002-1"></script>
+<script src="/cloud.js?v=20261002-1"></script>
+<script src="/z-code.js?v=20261002-1"></script>
+<script src="/manager.js?v=20261002-1"></script>
+<script src="/potential-dealers.js?v=20261002-1"></script>
+<script src="/dealer-management.js?v=20261002-1"></script>
+<script src="/daily-report.js?v=20261002-1"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
