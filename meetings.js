@@ -36,7 +36,11 @@ function saveMeetingNote(){
   dateEl.value='';
 
   persist();
-  if(typeof logActivity==='function') logActivity('MEETING_NOTE_ADDED','MEETING_NOTE',state.meetingNotes[state.meetingNotes.length-1].id,{title:title||'Toplantı Notu'});
+  if(typeof logActivity==='function') logActivity('MEETING_NOTE_ADDED','MEETING_NOTE',state.meetingNotes[state.meetingNotes.length-1].id,{
+    title:title||'Toplantı Notu',
+    note,
+    meetingDate
+  });
   renderMeetingNotes();
 }
 
@@ -87,6 +91,12 @@ function renderMeetingNotes(){
   if(filter==='open')items=items.filter(x=>x.status!=='done');
   if(filter==='done')items=items.filter(x=>x.status==='done');
 
+  const total=state.meetingNotes.length;
+  const openCount=state.meetingNotes.filter(x=>x.status!=='done').length;
+  const doneCount=total-openCount;
+  const summary=document.getElementById('meetingNoteCountSummary');
+  if(summary)summary.textContent='Toplam '+total+' not • '+openCount+' açık • '+doneCount+' tamamlanan';
+
   list.innerHTML=items.length?items.map(x=>{
     const done=x.status==='done';
     return '<div class="item" style="'+(done?'opacity:.65;background:#f8fafc;':'')+'">'+
@@ -104,6 +114,147 @@ function renderMeetingNotes(){
   }).join(''):'<div class="muted">Bu filtrede toplantı notu yok.</div>';
 }
 
+function cloudMeetingRowToLocal(m){
+  const actorId=m.actor_user_id||m.user_id;
+  const profile=(typeof teamProfilesById!=='undefined'&&teamProfilesById)?teamProfilesById.get(actorId)||{}:{};
+  return {
+    id:m.id,
+    title:m.title||'Toplantı Notu',
+    note:m.note||'',
+    meetingDate:m.meeting_date||'',
+    status:m.status||'open',
+    createdAt:m.created_at||m.updated_at||new Date().toISOString(),
+    _ownerUserId:m.user_id,
+    _actorUserId:actorId,
+    _actorName:profile.full_name||profile.username||profile.email||'Kullanıcı',
+    _actorUsername:profile.username||''
+  };
+}
+
+let meetingSyncSafetyInstalled=false;
+function installMeetingSyncSafety(){
+  if(meetingSyncSafetyInstalled)return;
+  if(typeof syncStateToCloud!=='function'||typeof supabaseClient==='undefined')return;
+
+  const originalSync=syncStateToCloud;
+  window.syncStateToCloud=async function(initial=false){
+    if(cloudUser&&supabaseClient&&!cloudHydrating){
+      try{
+        // Eski telefon/sekme state'i buluttaki daha yeni toplantı notlarını silmesin.
+        // Ana sync halen replace mantığı kullandığı için önce buluttaki mevcut kayıtları
+        // local state'e eksiksiz birleştiriyoruz.
+        const {data,error}=await supabaseClient.from('meeting_notes')
+          .select('*')
+          .eq('user_id',cloudUser.id);
+        if(!error&&Array.isArray(data)){
+          const ids=new Set((state.meetingNotes||[]).map(x=>x.id));
+          for(const row of data){
+            if(!ids.has(row.id)){
+              state.meetingNotes.push(cloudMeetingRowToLocal(row));
+              ids.add(row.id);
+            }
+          }
+        }
+      }catch(err){
+        console.warn('Meeting sync safety merge failed',err);
+      }
+    }
+    return originalSync(initial);
+  };
+  meetingSyncSafetyInstalled=true;
+}
+
+async function recoverMeetingNotesFromBackups(){
+  if(!cloudUser||!supabaseClient){alert('Önce giriş yapmalısın.');return}
+
+  try{
+    const [{data:current,error:currentErr},{data:backups,error:backupErr},{data:activity,error:activityErr}]=await Promise.all([
+      supabaseClient.from('meeting_notes').select('*').eq('user_id',cloudUser.id),
+      supabaseClient.from('data_backups').select('id,label,snapshot,created_at').eq('user_id',cloudUser.id).order('created_at',{ascending:false}),
+      supabaseClient.from('activity_log').select('id,entity_id,details,created_at')
+        .eq('organization_id',teamContext.organizationId)
+        .eq('actor_user_id',cloudUser.id)
+        .eq('action','MEETING_NOTE_ADDED')
+        .order('created_at',{ascending:true})
+    ]);
+    if(currentErr)throw currentErr;
+    if(backupErr)throw backupErr;
+
+    const existingIds=new Set((current||[]).map(x=>x.id));
+    const recoveredMap=new Map();
+
+    for(const b of (backups||[])){
+      let snapshot=b.snapshot;
+      if(typeof snapshot==='string'){
+        try{snapshot=JSON.parse(snapshot)}catch(_){snapshot=null}
+      }
+      const notes=Array.isArray(snapshot?.meetingNotes)?snapshot.meetingNotes:[];
+      for(const n of notes){
+        if(!n?.id||existingIds.has(n.id)||recoveredMap.has(n.id))continue;
+        recoveredMap.set(n.id,{
+          id:n.id,
+          user_id:cloudUser.id,
+          organization_id:teamContext.organizationId,
+          actor_user_id:n._actorUserId||n._ownerUserId||cloudUser.id,
+          title:n.title||'Toplantı Notu',
+          note:n.note||'',
+          meeting_date:n.meetingDate||null,
+          status:n.status||'open',
+          created_at:n.createdAt||b.created_at||new Date().toISOString(),
+          updated_at:new Date().toISOString()
+        });
+      }
+    }
+
+    const recoverable=[...recoveredMap.values()];
+    const activityMissing=(activityErr?[]:(activity||[])).filter(a=>a.entity_id&&!existingIds.has(a.entity_id)&&!recoveredMap.has(a.entity_id));
+
+    if(!recoverable.length){
+      let msg='Yedeklerde geri getirilebilecek eksik toplantı notu bulunamadı.';
+      if(activityMissing.length){
+        msg+='\n\nAncak aktivite geçmişinde '+activityMissing.length+' eski toplantı notu ekleme kaydı görünüyor. Bunların tam not metni eski aktivite kayıtlarına yazılmadığı için otomatik geri yüklenemiyor.';
+        const names=activityMissing.slice(0,10).map(a=>'• '+(a.details?.title||'Toplantı Notu')).join('\n');
+        if(names)msg+='\n\n'+names;
+      }
+      alert(msg);
+      return;
+    }
+
+    const preview=recoverable.slice(0,12).map(n=>'• '+n.title+(n.note?' — '+n.note.slice(0,70):'')).join('\n');
+    if(!confirm(
+      recoverable.length+' eksik toplantı notu yedeklerde bulundu.\n\n'+preview+
+      (recoverable.length>12?'\n• ...':'')+'\n\nBu notlar geri getirilsin mi?'
+    ))return;
+
+    const {error}=await supabaseClient.from('meeting_notes').upsert(recoverable,{onConflict:'user_id,id'});
+    if(error)throw error;
+
+    if(typeof loadStateFromCloud==='function')await loadStateFromCloud();
+    if(document.getElementById('meetingFilter'))meetingFilter.value='all';
+    renderMeetingNotes();
+    alert(recoverable.length+' toplantı notu geri getirildi. Filtre “Tümü” olarak açıldı.');
+  }catch(err){
+    console.error('Meeting note recovery failed',err);
+    alert('Toplantı notu kurtarma işlemi başarısız: '+(err.message||err));
+  }
+}
+
+function installMeetingRecoveryUi(){
+  const list=document.getElementById('meetingNotesList');
+  if(!list)return;
+  const card=list.closest('.card');
+  if(!card||document.getElementById('meetingRecoveryActions'))return;
+
+  const bar=document.createElement('div');
+  bar.id='meetingRecoveryActions';
+  bar.className='toolbar';
+  bar.style.cssText='margin:10px 0 12px;justify-content:space-between;align-items:center;flex-wrap:wrap';
+  bar.innerHTML='<div id="meetingNoteCountSummary" class="muted"></div>'+ 
+    '<button class="btn btn-ghost" onclick="recoverMeetingNotesFromBackups()">Yedekten Eksik Notları Kontrol Et</button>';
+  list.parentNode.insertBefore(bar,list);
+  renderMeetingNotes();
+}
+
 // renderAll davranışını bozmak yerine, mevcut renderAll'i güvenli şekilde sar.
 const baseRenderAll=window.renderAll;
 window.renderAll=function(){
@@ -111,4 +262,14 @@ window.renderAll=function(){
   renderMeetingNotes();
 };
 
-document.addEventListener('DOMContentLoaded',()=>renderMeetingNotes());
+document.addEventListener('DOMContentLoaded',()=>{
+  renderMeetingNotes();
+  installMeetingRecoveryUi();
+  setTimeout(installMeetingSyncSafety,0);
+});
+
+// cloud.js bu dosyadan sonra yükleniyor; auth veya yeniden render sonrası güvenlik katmanını tekrar teyit et.
+window.addEventListener('load',()=>{
+  installMeetingSyncSafety();
+  installMeetingRecoveryUi();
+});
