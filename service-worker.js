@@ -1,4 +1,4 @@
-const CACHE = 'ilke-saha-v53';
+const CACHE = 'ilke-saha-v54';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/ilke-logo.svg', '/app-icon.svg'];
 
 self.addEventListener('install', event => {
