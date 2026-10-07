@@ -103,6 +103,9 @@ declare
     'potential_visits',
     'daily_routes',
     'route_stops',
+    'recurring_routes',
+    'recurring_route_stops',
+    'z_code_registry',
     'user_settings'
   ];
 begin
