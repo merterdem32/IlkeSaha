@@ -141,3 +141,103 @@ async function removeZCodeEntry(cariCode){
   if(typeof renderDealers==='function')renderDealers();
   if(typeof renderRoute==='function')renderRoute();
 }
+
+// ---------------------------------------------------------------------------
+// Mobil kaldığın yerden devam: her sekmenin dikey kaydırma konumunu ayrı sakla.
+// Android/PWA uygulamayı arka planda yeniden oluşturduğunda sayfa yüksekliği birkaç
+// aşamada değişebildiği için geri dönüşte konumu tek sefer değil kontrollü tekrarlarla uygular.
+// ---------------------------------------------------------------------------
+const ilkeScrollStateKey='ilkeSahaScrollStateV2';
+let ilkeScrollSaveFrame=0;
+let ilkeScrollRestoreToken=0;
+let ilkeScrollIgnoreUntil=0;
+
+function ilkeActiveSectionId(){
+  return document.querySelector('.section.active')?.id||null;
+}
+
+function ilkeReadScrollState(){
+  try{return JSON.parse(localStorage.getItem(ilkeScrollStateKey)||'{}')||{};}catch(_){return {};}
+}
+
+function ilkeWriteScrollPosition(sectionId,y){
+  if(!sectionId)return;
+  const all=ilkeReadScrollState();
+  all[sectionId]={y:Math.max(0,Math.round(Number(y)||0)),savedAt:Date.now()};
+  try{localStorage.setItem(ilkeScrollStateKey,JSON.stringify(all));}catch(_){ }
+}
+
+function ilkeSaveCurrentScroll(){
+  if(Date.now()<ilkeScrollIgnoreUntil)return;
+  const sectionId=ilkeActiveSectionId();
+  if(!sectionId)return;
+  const y=window.scrollY||document.documentElement.scrollTop||document.body.scrollTop||0;
+  ilkeWriteScrollPosition(sectionId,y);
+}
+
+function ilkeRestoreSectionScroll(sectionId){
+  if(!sectionId)return;
+  const entry=ilkeReadScrollState()[sectionId];
+  const target=Math.max(0,Number(entry?.y)||0);
+  if(target<=0)return;
+
+  const token=++ilkeScrollRestoreToken;
+  const delays=[0,60,160,350,700,1200];
+  ilkeScrollIgnoreUntil=Date.now()+1400;
+
+  delays.forEach(delay=>setTimeout(()=>{
+    if(token!==ilkeScrollRestoreToken)return;
+    if(ilkeActiveSectionId()!==sectionId)return;
+    const maxY=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+    const y=Math.min(target,maxY);
+    window.scrollTo(0,y);
+  },delay));
+}
+
+window.addEventListener('scroll',()=>{
+  if(ilkeScrollSaveFrame)return;
+  ilkeScrollSaveFrame=requestAnimationFrame(()=>{
+    ilkeScrollSaveFrame=0;
+    ilkeSaveCurrentScroll();
+  });
+},{passive:true});
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    ilkeSaveCurrentScroll();
+  }else{
+    const sectionId=ilkeActiveSectionId()||readUiState?.().section;
+    setTimeout(()=>ilkeRestoreSectionScroll(sectionId),80);
+  }
+});
+
+window.addEventListener('pagehide',ilkeSaveCurrentScroll);
+window.addEventListener('beforeunload',ilkeSaveCurrentScroll);
+window.addEventListener('pageshow',()=>{
+  const sectionId=ilkeActiveSectionId()||readUiState?.().section;
+  setTimeout(()=>ilkeRestoreSectionScroll(sectionId),100);
+});
+
+// Sekme değiştirirken çıkılan sekmenin yerini kaydet, girilen sekmenin eski yerini geri yükle.
+if(typeof window.activateSection==='function'){
+  const ilkeOriginalActivateSection=window.activateSection;
+  window.activateSection=function(sectionId){
+    ilkeSaveCurrentScroll();
+    const result=ilkeOriginalActivateSection.apply(this,arguments);
+    setTimeout(()=>ilkeRestoreSectionScroll(sectionId),70);
+    return result;
+  };
+}
+
+// Oturum geri yüklendiğinde içerik/render işlemleri tamamlandıktan sonra son sekmenin yerini getir.
+if(typeof window.restoreUiStateAfterAuth==='function'){
+  const ilkeOriginalRestoreUiStateAfterAuth=window.restoreUiStateAfterAuth;
+  window.restoreUiStateAfterAuth=function(){
+    const result=ilkeOriginalRestoreUiStateAfterAuth.apply(this,arguments);
+    const saved=typeof readUiState==='function'?readUiState():{};
+    const sectionId=saved.section||ilkeActiveSectionId();
+    setTimeout(()=>ilkeRestoreSectionScroll(sectionId),120);
+    setTimeout(()=>ilkeRestoreSectionScroll(sectionId),500);
+    return result;
+  };
+}
