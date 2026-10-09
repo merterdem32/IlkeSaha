@@ -1,5 +1,5 @@
-const CACHE = 'ilke-saha-v55';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ilke-logo.svg', '/app-icon.svg'];
+const CACHE = 'ilke-saha-v56';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ui-continuity.js', '/ilke-logo.svg', '/app-icon.svg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
@@ -13,8 +13,40 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+async function transformIndexResponse(response){
+  const text=await response.text();
+  let html=text
+    .replace(/<section id="authLoading"[\s\S]*?<\/section>\s*/i,'')
+    .replace('</body>','<script src="/ui-continuity.js?v=20261010-1"></script>\n</body>');
+  return new Response(html,{
+    status:response.status,
+    statusText:response.statusText,
+    headers:{'Content-Type':'text/html; charset=utf-8'}
+  });
+}
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+
+  const url=new URL(event.request.url);
+  const isNavigation=event.request.mode==='navigate' || url.pathname==='/' || url.pathname==='/index.html';
+
+  if(isNavigation){
+    event.respondWith((async()=>{
+      try{
+        const network=await fetch(event.request);
+        const cacheCopy=network.clone();
+        caches.open(CACHE).then(cache=>cache.put('/index.html',cacheCopy)).catch(()=>{});
+        return await transformIndexResponse(network);
+      }catch(_){
+        const cached=await caches.match('/index.html');
+        if(cached)return await transformIndexResponse(cached);
+        throw _;
+      }
+    })());
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
@@ -22,6 +54,6 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE).then(cache => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then(r => r || caches.match('/index.html')))
+      .catch(() => caches.match(event.request))
   );
 });
