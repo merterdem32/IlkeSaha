@@ -1,4 +1,4 @@
-const CACHE = 'ilke-saha-v58';
+const CACHE = 'ilke-saha-v59';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ui-continuity.js', '/dealer-delete.js', '/ilke-logo.svg', '/app-icon.svg'];
 
 self.addEventListener('install', event => {
@@ -17,7 +17,7 @@ async function transformIndexResponse(response){
   const text=await response.text();
   let html=text
     .replace(/<section id="authLoading"[\s\S]*?<\/section>\s*/i,'')
-    .replace('</body>','<script src="/ui-continuity.js?v=20261010-2"></script>\n<script src="/dealer-delete.js?v=20261010-1"></script>\n</body>');
+    .replace('</body>','<script src="/ui-continuity.js?v=20261010-2"></script>\n<script src="/dealer-delete.js?v=20261010-2"></script>\n</body>');
   return new Response(html,{
     status:response.status,
     statusText:response.statusText,
@@ -51,7 +51,7 @@ self.addEventListener('fetch', event => {
     fetch(event.request)
       .then(response => {
         const copy = response.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy));
+        caches.open(CACHE).then(cache=>cache.put(event.request, copy));
         return response;
       })
       .catch(() => caches.match(event.request))
