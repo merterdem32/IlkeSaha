@@ -95,9 +95,47 @@
     window.showDealer=wrapped;
   }
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>setTimeout(installDetailDeleteButton,0),{once:true});
-  }else{
+  function installListDeleteButtons(){
+    const root=document.getElementById('dealerRows');
+    if(!root)return;
+
+    root.querySelectorAll('button[onclick^="showDealer("]').forEach(openBtn=>{
+      const toolbar=openBtn.closest('.toolbar');
+      if(!toolbar || toolbar.querySelector('[data-delete-dealer-row]'))return;
+
+      const match=(openBtn.getAttribute('onclick')||'').match(/showDealer\('([^']+)'\)/);
+      if(!match)return;
+      const id=match[1];
+      const d=state.dealers.find(x=>x.id===id);
+      if(!d||!canDeleteDealer(d))return;
+
+      const btn=document.createElement('button');
+      btn.className='btn btn-danger';
+      btn.type='button';
+      btn.dataset.deleteDealerRow='1';
+      btn.textContent='Sil';
+      btn.onclick=()=>deleteDealerPermanently(id);
+
+      const directions=[...toolbar.querySelectorAll('button')].find(b=>b.textContent.trim()==='Yol Tarifi');
+      toolbar.insertBefore(btn,directions||null);
+    });
+  }
+
+  function startListObserver(){
+    const root=document.getElementById('dealerRows');
+    if(!root)return;
+    installListDeleteButtons();
+    new MutationObserver(()=>installListDeleteButtons()).observe(root,{childList:true,subtree:true});
+  }
+
+  function init(){
     setTimeout(installDetailDeleteButton,0);
+    setTimeout(startListObserver,0);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',init,{once:true});
+  }else{
+    init();
   }
 })();
