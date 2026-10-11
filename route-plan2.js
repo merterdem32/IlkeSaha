@@ -1,147 +1,39 @@
 // İlke Saha - Rut Planı2
-// Kaynak liste bilerek boşaltıldı. Yeni sıralama kullanıcıdan geldikçe gün/gün doldurulacak.
-// Ana Rut Planı verisine dokunmaz.
+// Kaynak: Saha1_2_Haftalik_Rut_Plani_Guncel (6)(1).xlsx
 (() => {
-  const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
-  const SOURCE_VERSION='2026-10-12-empty-reset-1';
-  const PLAN={
-    '1|Pazartesi':{date:'2026-10-12',ids:[]},
-    '1|Salı':{date:'2026-10-13',ids:[]},
-    '1|Çarşamba':{date:'2026-10-14',ids:[]},
-    '1|Perşembe':{date:'2026-10-15',ids:[]},
-    '1|Cuma':{date:'2026-10-16',ids:[]},
-    '1|Cumartesi':{date:'2026-10-17',ids:[]},
-    '2|Pazartesi':{date:'2026-10-19',ids:[]},
-    '2|Salı':{date:'2026-10-20',ids:[]},
-    '2|Çarşamba':{date:'2026-10-21',ids:[]},
-    '2|Perşembe':{date:'2026-10-22',ids:[]},
-    '2|Cuma':{date:'2026-10-23',ids:[]},
-    '2|Cumartesi':{date:'2026-10-24',ids:[]}
-  };
-
-  const esc2=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
-  function resetOldRoute2DraftsOnce(){
-    try{
-      const marker='ilkeSahaRoute2SourceVersion';
-      if(localStorage.getItem(marker)===SOURCE_VERSION)return;
-      ['ilkeSahaRoute2DraftsV1','ilkeSahaRoute2DraftsV2','ilkeSahaRoute2DraftsV3'].forEach(k=>localStorage.removeItem(k));
-      localStorage.setItem(marker,SOURCE_VERSION);
-    }catch(_){ }
-  }
-
-  function dealerBySource(n){
-    if(typeof state==='undefined'||!Array.isArray(state.dealers))return null;
-    const id='imported-'+String(n).padStart(3,'0');
-    return state.dealers.find(d=>d.id===id)||null;
-  }
-
-  function selected(){
-    try{return JSON.parse(localStorage.getItem('ilkeSahaRoute2SelectionV1')||'{}')||{};}catch(_){return {};}
-  }
-
-  function remember(){
-    const week=Number(document.getElementById('route2Week')?.value||1);
-    const day=document.getElementById('route2Day')?.value||'Pazartesi';
-    try{localStorage.setItem('ilkeSahaRoute2SelectionV1',JSON.stringify({week,day}));}catch(_){ }
-  }
-
-  function route2Directions(n){
-    const d=dealerBySource(n);
-    if(!d){alert('Bayi ana listede bulunamadı. Kaynak sıra: '+n);return;}
-    if(typeof openGoogleMapsDirections==='function'){openGoogleMapsDirections(d.id);return;}
-    const dest=(typeof isValidDealerCoordinate==='function'&&isValidDealerCoordinate(d.lat,d.lng))?d.lat+','+d.lng:(d.address||'');
-    if(!dest){alert('Bu bayi için adres veya koordinat yok.');return;}
-    window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(dest),'_blank','noopener');
-  }
-
-  function route2Dealer(n){
-    const d=dealerBySource(n);
-    if(!d){alert('Bayi ana listede bulunamadı. Kaynak sıra: '+n);return;}
-    if(typeof showDealer==='function')showDealer(d.id);
-  }
-
-  function route2Visit(n){
-    const d=dealerBySource(n);
-    if(!d){alert('Bayi ana listede bulunamadı. Kaynak sıra: '+n);return;}
-    if(typeof openVisitModal==='function')openVisitModal(d.id);
-  }
-
-  function renderRoute2(){
-    const week=Number(document.getElementById('route2Week')?.value||1);
-    const day=document.getElementById('route2Day')?.value||'Pazartesi';
-    const p=PLAN[week+'|'+day];
-    remember();
-
-    const list=document.getElementById('route2List');
-    const sum=document.getElementById('route2Summary');
-    if(!p||!list||!sum)return;
-
-    if(!p.ids.length){
-      const dateLabel=new Date(p.date+'T12:00:00').toLocaleDateString('tr-TR');
-      sum.innerHTML='<strong>'+week+'. Hafta • '+esc2(day)+' • '+dateLabel+'</strong><div class="muted" style="margin-top:6px">0 bayi • Yeni sıralama bekleniyor.</div>';
-      list.innerHTML='<div class="note"><strong>Rut Planı2 temizlendi.</strong><br><span class="muted">Bu güne henüz bayi atanmadı. Yeni sıralamayı verdiğinde buraya yerleştireceğiz.</span></div>';
-      if(typeof window.renderRoute2Workspace==='function')setTimeout(()=>window.renderRoute2Workspace(),0);
-      return;
-    }
-
-    const dealers=p.ids.map(n=>({n,d:dealerBySource(n)}));
-    const missing=dealers.filter(x=>!x.d).length;
-    const coordMissing=dealers.filter(x=>x.d&&typeof isValidDealerCoordinate==='function'&&!isValidDealerCoordinate(x.d.lat,x.d.lng)).length;
-    const districts=[...new Set(dealers.map(x=>x.d?.district).filter(Boolean))];
-    const dateLabel=new Date(p.date+'T12:00:00').toLocaleDateString('tr-TR');
-
-    sum.innerHTML='<strong>'+week+'. Hafta • '+esc2(day)+' • '+dateLabel+'</strong><div class="muted" style="margin-top:5px">'+p.ids.length+' bayi'+(coordMissing?' • <span class="badge b-warn">'+coordMissing+' koordinatsız</span>':'')+(missing?' • <span class="badge b-bad">'+missing+' eşleşmeyen kayıt</span>':'')+'</div><div class="muted" style="margin-top:5px">'+esc2(districts.join(' • '))+'</div>';
-
-    list.innerHTML=dealers.map((x,i)=>{
-      const d=x.d;
-      const name=d?.name||('Kaynak bayi '+x.n);
-      const visited=d&&Array.isArray(state.visits)&&state.visits.some(v=>v.dealerId===d.id&&String(v.date||'').slice(0,10)===p.date);
-      const hasCoord=d&&typeof isValidDealerCoordinate==='function'&&isValidDealerCoordinate(d.lat,d.lng);
-      return '<div class="item route-stop"><div class="num">'+(i+1)+'</div><div class="route-info"><strong>'+esc2(name)+'</strong>'+(d?'<span class="muted">'+esc2(d.district||'-')+(d.phone?' • '+esc2(d.phone):'')+'</span>':'<span class="muted">Ana bayi listesinde eşleşme bulunamadı.</span>')+(d?.address?'<span class="muted" style="margin-top:3px">'+esc2(d.address)+'</span>':'')+'<div style="margin-top:6px">'+(hasCoord?'<span class="badge b-ok">Konum var</span>':'<span class="badge b-warn">Koordinat eksik</span>')+(d?.isZCode?' <span class="badge b-zcode">Z KODLU</span>':'')+(visited?' <span class="badge b-ok">Ziyaret edildi</span>':'')+'</div></div><div class="toolbar route-actions"><button class="btn btn-ghost" onclick="route2Dealer('+x.n+')">Bayi Aç</button><button class="btn btn-primary" onclick="route2Visit('+x.n+')">Görüşme Notu</button><button class="btn btn-accent" onclick="route2Directions('+x.n+')">Yol Tarifi</button></div></div>';
-    }).join('');
-
-    if(typeof window.renderRoute2Workspace==='function')setTimeout(()=>window.renderRoute2Workspace(),0);
-  }
-
-  function install(){
-    resetOldRoute2DraftsOnce();
-    if(document.getElementById('route2')){
-      window.renderRoute2=renderRoute2;
-      renderRoute2();
-      return;
-    }
-
-    const old=document.getElementById('routeNavBtn');
-    if(old){
-      const b=document.createElement('button');
-      b.id='route2NavBtn';
-      b.dataset.section='route2';
-      b.textContent='Rut Planı2';
-      b.onclick=()=>{if(typeof activateSection==='function')activateSection('route2');setTimeout(renderRoute2,0);};
-      old.insertAdjacentElement('afterend',b);
-    }
-
-    const section=document.createElement('section');
-    section.id='route2';
-    section.className='section';
-    section.innerHTML='<div class="grid"><div class="card span-4"><h3>Rut Planı2</h3><div class="note"><strong>Boş çalışma alanı</strong><br><span class="muted">Eski Rut Planı2 bayileri temizlendi. Yeni sıralamayı burada sıfırdan oluşturacağız.</span></div><label>Hafta</label><select id="route2Week"><option value="1">1. Hafta</option><option value="2">2. Hafta</option></select><label>Gün</label><select id="route2Day">'+DAYS.map(d=>'<option value="'+d+'">'+d+'</option>').join('')+'</select><button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="renderRoute2()">Planı Göster</button></div><div class="card span-8"><h3>Yeni 2 Haftalık Rut</h3><div id="route2Summary" class="note">Plan hazırlanıyor…</div><div id="route2List" class="list"></div></div></div>';
-
-    const main=document.querySelector('.app > main');
-    const oldSection=document.getElementById('route');
-    if(oldSection)oldSection.insertAdjacentElement('afterend',section); else main?.appendChild(section);
-
-    const s=selected();
-    if(s.week)document.getElementById('route2Week').value=String(s.week);
-    if(DAYS.includes(s.day))document.getElementById('route2Day').value=s.day;
-    document.getElementById('route2Week').addEventListener('change',renderRoute2);
-    document.getElementById('route2Day').addEventListener('change',renderRoute2);
-    renderRoute2();
-  }
-
-  window.renderRoute2=renderRoute2;
-  window.route2Directions=route2Directions;
-  window.route2Dealer=route2Dealer;
-  window.route2Visit=route2Visit;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true}); else install();
+ const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'], VER='2026-10-12-excel-6-1';
+ const PLAN={"1|Pazartesi":{"date":"2026-10-12","ids":[1,2,3,4,5,6,7,8,9,10,11,12]},"1|Salı":{"date":"2026-10-13","ids":[13,14,15,16,17,18,19,20,21,22,23,24,25]},"1|Çarşamba":{"date":"2026-10-14","ids":[26,27,28,29,30,31,32,33,34,35]},"1|Perşembe":{"date":"2026-10-15","ids":[36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53]},"1|Cuma":{"date":"2026-10-16","ids":[54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69]},"1|Cumartesi":{"date":"2026-10-17","ids":[70,71,72,73,74,75,76]},"2|Pazartesi":{"date":"2026-10-19","ids":[77,78,79,80,81,82]},"2|Salı":{"date":"2026-10-20","ids":[83,84,85,86,87,88,89,90,91]},"2|Çarşamba":{"date":"2026-10-21","ids":[92,93,94,95,96,97,98,99,100,101,102,103,104]},"2|Perşembe":{"date":"2026-10-22","ids":[105,106,107,108,109,110,111,112,113,114,115,116]},"2|Cuma":{"date":"2026-10-23","ids":[117,118,119,120,121,122,123,124,125]},"2|Cumartesi":{"date":"2026-10-24","ids":[126,127,128,129,130,131,132]}};
+ const NAMES={"1":"İSMAİL ŞEN-ADIM OTO ELEKTRİK","2":"İMDAT DEMİR-ÖMER OTO","3":"MURAT OTO BAKIM SERVİSİ","4":"KÜBRA OTO - OSMAN USTA","5":"UMT GARAGE UMUT OTO YEDEK PARÇA ELEKTRONİK VE AKSEUARLARI SAN. TİC. LTD. ŞTİ.","6":"KADİR ERENSES KARAGÖZ AKÜ MARKET","7":"GÜLERSAM İNŞAAT OTO.TUR.SAN.VE TİC.LTD.ŞTİ.","8":"GURUR GÜRBÜZ","9":"TEMUR OTO- OSMAN NURİ TEMUR","10":"EMEK OTOMOTİV MUSTAFA BALIK","11":"TÜM OTOMOTİV TAŞIMACILIK TİCARET SAN. LTD. ŞTİ.","12":"ARKADAŞ OTO ELEKTRİK-ÇETİN AKDENİZ","13":"DENİZ YEDEK PARÇA SERVİS VE OTOMOTİV  TİC. LTD ŞTİ","14":"ULAŞ OTOMOTİV YEDEK PARÇA TİCARET LİMİTED ŞİRKETİ","15":"ARS OTOMOBİL YEDEK PARÇA SAN.VE TİC.LTD.ŞTİ","16":"BİLAL OSMAN TANRIYATAPAN - MİR OTOMOTİV","17":"NERMİN DİLEK-EMİR OTO ELEKTRİK","18":"UZMANLAR İSTİF MAKİNA BAKIM ONARIM TİC.LTD.ŞTİ.","19":"İBRAHİM DOĞAN DOĞAN AKÜ","20":"RAGIP FIRAT AKTAŞ - NEF OTOMOTİV","21":"SEVENKAR OTOMOTIV ITHALAT IHRACAT SANAYİ VE TİCARE","22":"ELİT OTOMOTİV YEDEK PARÇA- ŞABAN DİKÇAL","23":"ŞEHMUS SEVEN OTO ÜMİT KARDEŞLER","24":"GÖRLER OTO 2- AHMET GÖRLER","25":"AYDIN DEMİRTAŞ - HONDA MERKEZ OTO","26":"ÖZGRUP AKÜ MARKET -EMRE ÖZ","27":"AHMET ÖZEL OTO","28":"ALİ KESKİN-KESKİNLER OTOMOTİV","29":"SELİM ÖZER - SOYKAN OTOMOTİV","30":"KONYALILAR OTO LASTİK - SÜLEYMAN YILDIRIM","31":"OLGUN GLOBAL TURİZM OTOMOTİV GIDA LİMİTED ŞİRKETİ","32":"KENAN ASARKAYA -ASARKAYA OTOMOTİV","33":"OTO KARINCA","34":"19 OTO LASTİK -NESRİN TOLUMOĞLU","35":"KARAKAYA OTOMOTİV TİC. LTD .ŞTİ.","36":"KURBAN AKDEMİR-AKDEMİR OTO","37":"KAYA OTO -YAPRAK KAYA BAĞDATLI","38":"UYGUN TİCARET OTO BAKIM VE YEDEK PARÇA SERVİSİ-MUSTAFA UYGUN","39":"ALPAR OTOMOTİV SANAYİ VE TİCARET LİMİTED ŞİRKETİ","40":"TUTKU OTO YEDEK PARÇA SAN. VE TİC.LTD. ŞTİ.","41":"ÖZGÜÇLÜLER OTOMOTİV - MUZAFFER BY-NURETTİN BY-SALİH","42":"EVO OTOMOTİV YEDEK PARÇA","43":"ÇAĞDAŞ OTOMOTİV TEKSTİL GIDA İNŞ. SAN. TİC.","44":"FERHAT YILMAZ HİSAR OTO PAZ NAK İNŞ SAN VE LTD ŞTİ","45":"YURT OTO VEDAT YURT(P)","46":"GEZ YEDEK PARÇA VE OTOMOTİV SAN TİC. LTD. ŞTİ.","47":"ATEŞ OTOMOTİV HASAN KIZILKAN ( P )","48":"OTO N55 YEDEK PARÇA -YASİN NACAK","49":"BÜLENT ÖZTÜRK - ÖZTÜRK OTO ELEKTRİK  (P)","50":"OTO SAĞLAM YEDEKPARÇA","51":"KAZANCIOĞLU KARDEŞLER -HÜSEYİN ÜSTÜNGÜN","52":"ARDA DEMİRTAŞ AKÜ -OLGUN YEŞİLYURT","53":"TUNCAYLAR OTO YEDEK PARÇA","54":"EUROMOTORS AHMET USTA (P)","55":"ÖZTÜRK OTOMOTİV KAPORTA BOYA PETROL","56":"ÇETİNBAŞ OTOMOTİV SAN. TİC. LTD . ŞTİ.","57":"GÖRKEM OTO-YASİN KARATAŞ","58":"ÖZYILDIZ OTOMOTİV - MAŞUK YILDIZ","59":"GUTBETTİN KARÇIK  - AKTİF OTOMOTİV OTO KAPORTA VE","60":"NACAKOĞLU OTOMOTİV VE TAŞIMACILIK TİC. LTD.ŞTİ.","61":"NCK OTOMOTİV TURİZM İNŞAAT TARIM GIDA SANAYİ VE TİCARET LİMİTED ŞİRKETİ","62":"BEŞLER OTO TAMİR BAKIM SERVİSİ - TUĞRUL TÜRKER","63":"ÖZGÜR OTO PERSONEL VE SERVİS TAŞIMACILIĞI -YUNUS YAZICI","64":"MERKEZ OTO-SELİM BİNGÖLLÜ","65":"LİDER NEVA OTOMOTİV İÇ VE DIŞ İC. LTD ŞTİ.","66":"MURAT BİROL - BİRLİK OTO","67":"MUTLU OTO BÜLENT HARMANKAYA","68":"OKAN OTO ELEKTİRİK TAMER ÖZTÜRK","69":"HÜSAMETTİN SÜER - ÖZEN OTO","70":"KAVAKLI AKÜ MARKET -POLAT KILIÇEL","71":"KIRAÇ OTO- TUĞRUL ALNIAK","72":"B OTOMOTİV SERVİS SANAYİ VE TİC. LTD.ŞTİ","73":"FATİH TOLGA ÖZTÜRK","74":"AYDEMİR İZCİ - HEDEF OTO","75":"STAR OTOMOTİV - BOSCH CAR SERVİCE BEYKENT SANAYİ","76":"ROTEKS AR OTOMOTİV-3   ATAKAN AKÇUBUK","77":"ALİ TOPRAK VE ORTAĞI","78":"TOLGA KIZILCIKLI - JET OTO","79":"FİLO 15 NAKLİYE TUR.OTOMOTİV SAN.VE TİC.LTD.ŞTİ","80":"UYGUNLAR LASTİK NAK.GID.PAZ.İTH.İHR.SAN.TİC.LTD.ŞTİ","81":"NAR UZMAN DİZEL REVİZYON OTO SERVİS VE YEDEK PARÇA SANAYİ VE TİCARET LİMİTED ŞİRKETİ","82":"BAHATTİN ÖZMEN - B&Y AUTO","83":"HACI MUSTAFA KELEK-SİSTEM OTO ELEKTRİK","84":"KEMAL YILDIZ -OTOBAKIMHANE","85":"ÇELİK OTOMOTİV -İBRAHİM ÇELİK","86":"ÖZ MEMİŞLER OTOMOTİV GIDA TEKSTİL","87":"RIZGAR ALUSH","88":"TEKİN KARDEŞLER LASTİK PETROL SAN VE TİC","89":"EROL ALTINTAŞ -ALTINTAŞ AKÜ MARKET","90":"BOZACI OTO ELEKTRİK MEKANİK SERVİSİ -EMRE BOZACI","91":"ORHAN YILDIRIM-ORHAN PETROL","92":"FG AKÜ CİHAN ELTE","93":"AHMET KARA-PINARBAŞI OTO ELEKTRİK","94":"GM GARAGE OTOMOTİV","95":"ORHAN BALTAÇ - HUZUR OTO","96":"YUNUS ÇÖL/ MİNA OTO SERVİS","97":"SERHAT HÜSEYİNOĞLU - HÜSEYİNOĞLU OTOMOTİV","98":"RAMAZAN ERYILMAZ - MERA CAR","99":"ÖNERLER OTOMOTİV -ZAFER ÖNER","100":"MEHMET TANER DEĞER-TANER OTOMOTİV","101":"HASAL OTOMOTİV SERVİS HİZMETLERİ","102":"EMİR AKÜ OTOMOTİV SAN VE DIŞ TİC. LTD. ŞTİ.","103":"JAPON OTO SERVİS- İLKER USTA","104":"OSMAN BÜTÜNER-BÜTÜNER OTO SERVİS","105":"BÜLENT AKSOY - HÜNER OTO","106":"DOĞUKAN GROUP OTOMOTİV TİCARET ANONİM ŞİRKETİ","107":"CEYHUN OTO SERVİS - CEYHAN AVCI","108":"BAŞKENT OTOMOTİV -HARUN KARAAĞAÇ","109":"TOLGA BAYKALA - KANCA AKÜ MARKET","110":"ATM MEKANİK OTO SAN. TİC. LTD. ŞTİ","111":"MÜRSEL USTA OTOMOTİV SANAYİ VE  TİCARET LTD ŞTİ","112":"MİNİKLER TUNİNG - CEM BAŞARAN-HAKAN KETENCİ","113":"DOĞUKAN OTOMOTİV 2 - BARIŞ AKDEMİR","114":"GELTUR TURİZM OTOMOTİV GIDA TİC.LTD.ŞTİ.","115":"NURCİHAN CEYLAN-CEYKAR OTOMOTİV","116":"ROTEKS AR OTOMOTİV-1   SEYİT AKÇUBUK","117":"İSTANBUL REKLAMCILIK JANT LASTİK İNŞ. GIDA. TURZ.","118":"KESMAN ÇİLİNGİR ELEKTRONİK İTHAALAT İHRACAAT TİC. LTD. ŞTİ.","119":"ÖNDER OTO SANAYİ VE TİC.LTD.ŞTİ.","120":"SERCAN GÜRELİ","121":"İZMİRLİ ROT BALANS - ÇÖZÜM OTO ELEKTRİK - MURAT BOZDEMİR","122":"SEL OTO-SEFER SEL","123":"OTO GARANTİ OTOMOTİV","124":"MEHMET VEYSİ KAYA - ARAS OTO","125":"VATAN OTO LASTİK-PERİHAN BODUR","126":"ESOTOM OTOMOTİV SERVİS VE SANAYİ TİC.LTD.ŞTİ.","127":"BAKİ USTA İNŞAAT OTOMOTİV EMLAK TİC.LTD.ŞTİ\"","128":"KARİYER OTO SERVİS SAN. VE TİC. LTD. ŞTİ.","129":"VYS AUTO SERVİCE-ZEYNEP KAYA ARSLAN","130":"CAN AKÜ - YUSUF CAN KIZMAZ","131":"ALİ DOĞAN  -ATLAS OTO LASTİK","132":"MUSTAFA ÇELİK - MUTCAR OTO"};
+ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+ const norm=v=>String(v||'').trim().toLocaleUpperCase('tr-TR').replace(/[“”"'`´]/g,'').replace(/\s+/g,' ').replace(/\s*[-–—]\s*/g,'-');
+ const loose=v=>norm(v).replace(/[^A-ZÇĞİÖŞÜ0-9]/g,'');
+ function reset(){try{if(localStorage.getItem('ilkeSahaRoute2SourceVersion')!==VER){['ilkeSahaRoute2DraftsV1','ilkeSahaRoute2DraftsV2','ilkeSahaRoute2DraftsV3','ilkeSahaRoute2DraftsV4'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('ilkeSahaRoute2SourceVersion',VER);}}catch(_ ){}}
+ function dealer(n){if(!NAMES[n]||!Array.isArray(state?.dealers))return null;const a=norm(NAMES[n]),b=loose(NAMES[n]);return state.dealers.find(d=>norm(d.name)===a)||state.dealers.find(d=>loose(d.name)===b)||null;}
+ function current(){const w=Number(document.getElementById('route2Week')?.value||1),d=document.getElementById('route2Day')?.value||'Pazartesi';return PLAN[w+'|'+d]||{date:'',ids:[]};}
+ function remember(){try{localStorage.setItem('ilkeSahaRoute2SelectionV1',JSON.stringify({week:Number(route2Week.value||1),day:route2Day.value||'Pazartesi'}));}catch(_ ){}}
+ function route2Dealer(n){const d=dealer(n);if(!d)return alert('Ana bayi listesinde eşleşmedi: '+NAMES[n]);showDealer(d.id);}
+ function route2Visit(n){const d=dealer(n);if(!d)return alert('Ana bayi listesinde eşleşmedi: '+NAMES[n]);openVisitModal(d.id);}
+ function route2Directions(n){const d=dealer(n);if(!d)return alert('Ana bayi listesinde eşleşmedi: '+NAMES[n]);openGoogleMapsDirections(d.id);}
+ function renderRoute2(){
+   remember(); const p=current(), list=document.getElementById('route2List'), sum=document.getElementById('route2Summary'); if(!list||!sum)return;
+   const rows=p.ids.map(n=>({n,d:dealer(n)})), miss=rows.filter(x=>!x.d).length, coord=rows.filter(x=>x.d&&!isValidDealerCoordinate(x.d.lat,x.d.lng)).length;
+   const w=Number(route2Week.value||1), day=route2Day.value||'Pazartesi', date=p.date?new Date(p.date+'T12:00:00').toLocaleDateString('tr-TR'):'';
+   sum.innerHTML='<strong>'+w+'. Hafta • '+esc(day)+(date?' • '+date:'')+'</strong><div class="muted" style="margin-top:5px">'+p.ids.length+' bayi'+(coord?' • <span class="badge b-warn">'+coord+' koordinatsız</span>':'')+(miss?' • <span class="badge b-bad">'+miss+' eşleşmeyen kayıt</span>':'')+'</div>';
+   list.innerHTML=rows.map((x,i)=>{const d=x.d,vis=d&&(state.visits||[]).some(v=>v.dealerId===d.id&&String(v.date||'').slice(0,10)===p.date);return '<div class="item route-stop" data-route2-source="'+x.n+'"><div class="num">'+(i+1)+'</div><div class="route-info"><strong>'+esc(d?.name||NAMES[x.n])+'</strong>'+(d?'<span class="muted">'+esc(d.district||'-')+(d.phone?' • '+esc(d.phone):'')+'</span>':'<span class="muted">Ana bayi listesinde eşleşme bulunamadı.</span>')+(d?.address?'<span class="muted" style="margin-top:3px">'+esc(d.address)+'</span>':'')+'<div style="margin-top:6px">'+(d&&isValidDealerCoordinate(d.lat,d.lng)?'<span class="badge b-ok">Konum var</span>':'<span class="badge b-warn">Koordinat eksik</span>')+(d?.isZCode?' <span class="badge b-zcode">Z KODLU</span>':'')+(vis?' <span class="badge b-ok">Ziyaret edildi</span>':'')+(!d?' <span class="badge b-bad">Eşleşmedi</span>':'')+'</div></div><div class="toolbar route-actions"><button class="btn btn-ghost" onclick="route2Dealer('+x.n+')">Bayi Aç</button><button class="btn btn-primary" onclick="route2Visit('+x.n+')">Görüşme Notu</button><button class="btn btn-accent" onclick="route2Directions('+x.n+')">Yol Tarifi</button></div></div>';}).join('');
+   if(typeof window.renderRoute2Workspace==='function')setTimeout(()=>window.renderRoute2Workspace(),0);
+ }
+ function install(){
+   reset(); let nav=document.getElementById('route2NavBtn'), old=document.getElementById('routeNavBtn');
+   if(!nav&&old){nav=document.createElement('button');nav.id='route2NavBtn';nav.dataset.section='route2';nav.textContent='Rut Planı2';old.insertAdjacentElement('afterend',nav);}
+   if(nav)nav.onclick=()=>{activateSection('route2');setTimeout(renderRoute2,0);};
+   let sec=document.getElementById('route2');
+   if(!sec){sec=document.createElement('section');sec.id='route2';sec.className='section';sec.innerHTML='<div class="grid"><div class="card span-4"><h3>Rut Planı2</h3><div class="note"><strong>Güncel 2 haftalık plan</strong><br><span class="muted">Gönderdiğin Excel sıralaması kullanılıyor. Hafta veya gün değiştiğinde liste otomatik güncellenir.</span></div><label>Hafta</label><select id="route2Week"><option value="1">1. Hafta</option><option value="2">2. Hafta</option></select><label>Gün</label><select id="route2Day">'+DAYS.map(d=>'<option value="'+d+'">'+d+'</option>').join('')+'</select></div><div class="card span-8"><h3>Yeni 2 Haftalık Rut</h3><div id="route2Summary" class="note">Plan hazırlanıyor…</div><div id="route2List" class="list"></div></div></div>';document.getElementById('route')?.insertAdjacentElement('afterend',sec);}
+   try{const s=JSON.parse(localStorage.getItem('ilkeSahaRoute2SelectionV1')||'{}');if(s.week)route2Week.value=String(s.week);if(DAYS.includes(s.day))route2Day.value=s.day;}catch(_ ){}
+   if(!route2Week.dataset.bound){route2Week.dataset.bound='1';route2Week.addEventListener('change',renderRoute2);}
+   if(!route2Day.dataset.bound){route2Day.dataset.bound='1';route2Day.addEventListener('change',renderRoute2);}
+   renderRoute2();
+ }
+ window.route2Names=NAMES; window.route2Plan=PLAN; window.route2CurrentSourceIds=()=>current().ids.slice(); window.route2DealerBySource=dealer;
+ window.renderRoute2=renderRoute2; window.route2Dealer=route2Dealer; window.route2Visit=route2Visit; window.route2Directions=route2Directions;
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
