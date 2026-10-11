@@ -1,6 +1,15 @@
 // İlke Saha - Rut Planı2 güncel sıralama
 // 11.10.2026 tarihinde yüklenen Saha1_2_Haftalik_Rut_Plani_Guncel (5).xlsx sırasını kullanır.
 (() => {
+  const PLAN_VERSION='20261011-5';
+  try{
+    if(localStorage.getItem('ilkeSahaRoute2PlanVersion')!==PLAN_VERSION){
+      // Önceki Excel sırasından kalan günlük/optimize taslak yeni planın üstüne binmesin.
+      localStorage.removeItem('ilkeSahaRoute2DraftsV2');
+      localStorage.setItem('ilkeSahaRoute2PlanVersion',PLAN_VERSION);
+    }
+  }catch(_){ }
+
   const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const PLAN={
     '1|Pazartesi':{date:'2026-10-12',ids:[63,61,91,82,143,68,56,54,136,36,141,10]},
@@ -79,7 +88,6 @@
       nav.onclick=()=>{
         if(typeof activateSection==='function')activateSection('route2');
         setTimeout(renderLatestRoute2,0);
-        setTimeout(()=>{if(typeof renderRoute2Workspace==='function')renderRoute2Workspace();},30);
       };
     }
     renderLatestRoute2();
