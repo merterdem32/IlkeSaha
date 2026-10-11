@@ -1,5 +1,5 @@
-const CACHE = 'ilke-saha-v69';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ui-continuity.js', '/dealer-delete.js', '/route-plan2.js', '/route-plan2-actions.js', '/route-reconciliation.js', '/ilke-logo.svg', '/app-icon.svg'];
+const CACHE = 'ilke-saha-v70';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ui-continuity.js', '/dealer-delete.js', '/route-plan2.js', '/route-plan2-actions.js', '/route-reconciliation.js', '/route-reconciliation-fix.js', '/ilke-logo.svg', '/app-icon.svg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
@@ -16,7 +16,7 @@ self.addEventListener('activate', event => {
 async function transformIndexResponse(response){
   const text=await response.text();
   let html=text.replace(/<section id="authLoading"[\s\S]*?<\/section>\s*/i,'');
-  const injection='<script src="/ui-continuity.js?v=20261010-2"></script>\n<script src="/dealer-delete.js?v=20261010-2"></script>\n<script src="/route-plan2.js?v=20261012-3"></script>\n<script src="/route-plan2-actions.js?v=20261012-4"></script>\n<script src="/route-reconciliation.js?v=20261012-1"></script>\n';
+  const injection='<script src="/ui-continuity.js?v=20261010-2"></script>\n<script src="/dealer-delete.js?v=20261010-2"></script>\n<script src="/route-plan2.js?v=20261012-3"></script>\n<script src="/route-plan2-actions.js?v=20261012-4"></script>\n<script src="/route-reconciliation.js?v=20261012-1"></script>\n<script src="/route-reconciliation-fix.js?v=20261012-1"></script>\n';
   html=html.replace('</body>',injection+'</body>');
   return new Response(html,{
     status:response.status,
