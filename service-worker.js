@@ -1,5 +1,5 @@
-const CACHE = 'ilke-saha-v75';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ui-continuity.js', '/dealer-delete.js', '/route-plan2.js', '/route-plan2-actions.js', '/route-reconciliation.js', '/route-reconciliation-fix.js', '/route-template-editor.js', '/route-plan2-template-seed.js', '/route-planner.js', '/route-planner-regions.js', '/ilke-logo.svg', '/app-icon.svg'];
+const CACHE = 'ilke-saha-v76';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/styles.css', '/supabase-config.js', '/cloud.js', '/dealer-management.js', '/daily-report.js', '/z-code.js', '/personal-notes.js', '/potential-dealers.js', '/data-safety.js', '/ui-continuity.js', '/dealer-delete.js', '/route-plan2.js', '/route-plan2-actions.js', '/route-reconciliation.js', '/route-reconciliation-fix.js', '/route-template-editor.js', '/route-plan2-template-seed.js', '/route-planner.js', '/route-planner-regions.js', '/route-planner-fixes.js', '/ilke-logo.svg', '/app-icon.svg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
@@ -16,7 +16,7 @@ self.addEventListener('activate', event => {
 async function transformIndexResponse(response){
   const text=await response.text();
   let html=text.replace(/<section id="authLoading"[\s\S]*?<\/section>\s*/i,'');
-  const injection='<script src="/ui-continuity.js?v=20261010-2"></script>\n<script src="/dealer-delete.js?v=20261010-2"></script>\n<script src="/route-plan2.js?v=20261012-3"></script>\n<script src="/route-plan2-actions.js?v=20261012-6"></script>\n<script src="/route-reconciliation.js?v=20261012-1"></script>\n<script src="/route-reconciliation-fix.js?v=20261012-1"></script>\n<script src="/route-template-editor.js?v=20261013-1"></script>\n<script src="/route-plan2-template-seed.js?v=20261013-1"></script>\n<script src="/route-planner.js?v=20261013-1"></script>\n<script src="/route-planner-regions.js?v=20261013-1"></script>\n';
+  const injection='<script src="/ui-continuity.js?v=20261010-2"></script>\n<script src="/dealer-delete.js?v=20261010-2"></script>\n<script src="/route-plan2.js?v=20261012-3"></script>\n<script src="/route-plan2-actions.js?v=20261012-6"></script>\n<script src="/route-reconciliation.js?v=20261012-1"></script>\n<script src="/route-reconciliation-fix.js?v=20261012-1"></script>\n<script src="/route-template-editor.js?v=20261013-1"></script>\n<script src="/route-plan2-template-seed.js?v=20261013-1"></script>\n<script src="/route-planner.js?v=20261013-1"></script>\n<script src="/route-planner-regions.js?v=20261013-1"></script>\n<script src="/route-planner-fixes.js?v=20261013-1"></script>\n';
   html=html.replace('</body>',injection+'</body>');
   return new Response(html,{
     status:response.status,
@@ -51,7 +51,7 @@ self.addEventListener('fetch', event => {
     fetch(event.request)
       .then(response => {
         const copy = response.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy));
+        caches.open(CACHE).then(cache=>cache.put(event.request, copy));
         return response;
       })
       .catch(() => caches.match(event.request))
