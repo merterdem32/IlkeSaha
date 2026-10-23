@@ -10,6 +10,17 @@
   function ready(){return typeof cloudUser!=='undefined'&&cloudUser&&typeof teamContext!=='undefined'&&teamContext?.organizationId&&typeof supabaseClient!=='undefined'&&supabaseClient;}
   function isManager(){return teamContext?.role==='MANAGER';}
 
+  async function loadStaffRows(){
+    if(!isManager())return [{id:cloudUser.id,label:'Ben'}];
+    try{if(typeof loadManagerDirectory==='function')await loadManagerDirectory();}catch(_){ }
+    const ms=(typeof managerDirectoryCache!=='undefined'&&managerDirectoryCache?.members)||[];
+    const ps=(typeof managerDirectoryCache!=='undefined'&&managerDirectoryCache?.profiles)||new Map();
+    return ms.filter(x=>x.role==='FIELD_STAFF'&&x.is_active!==false).map(x=>{
+      const p=ps.get(x.user_id)||{};
+      return {id:x.user_id,label:p.full_name||p.username||p.email||x.user_id};
+    });
+  }
+
   function ensureUi(){
     if(document.getElementById('mapRouteAddDialog'))return;
     const d=document.createElement('dialog');
@@ -19,6 +30,7 @@
         <div><h2 style="margin:0">Rut Planına Ekle</h2><div id="mapRouteDealerInfo" class="muted"></div></div>
         <button class="btn btn-ghost" type="button" onclick="mapRouteAddClose()">Kapat</button>
       </div>
+      <div id="mapRouteStaffWrap"><label>Personel</label><select id="mapRouteStaff"></select></div>
       <div class="row">
         <div><label>Plan</label><select id="mapRoutePlanType"><option value="ROUTE1">Rut Planı</option><option value="ROUTE2">Rut Planı2</option></select></div>
         <div><label>Hafta</label><select id="mapRouteWeek"><option value="1">1. Hafta</option><option value="2">2. Hafta</option></select></div>
@@ -32,11 +44,24 @@
 
   function dealer(){return (state.dealers||[]).find(x=>x.id===selectedDealerId)||null;}
 
-  function open(dealerId){
+  async function open(dealerId){
     if(!ready()){alert('Bulut bağlantısı henüz hazır değil.');return;}
     const d=(state.dealers||[]).find(x=>x.id===dealerId);if(!d)return;
     if(!isManager()&&d.assignedUserId&&d.assignedUserId!==cloudUser.id){alert('Bu bayi senin sorumluluğunda değil.');return;}
     selectedDealerId=dealerId;ensureUi();
+
+    const rows=await loadStaffRows();
+    const staffSel=document.getElementById('mapRouteStaff');
+    const staffWrap=document.getElementById('mapRouteStaffWrap');
+    if(staffSel){
+      staffSel.innerHTML=rows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.label)+'</option>').join('');
+      const adminSelected=(typeof window.getAdminMapSelectedStaff==='function')?window.getAdminMapSelectedStaff():'all';
+      const preferred=(adminSelected&&adminSelected!=='all'&&rows.some(x=>x.id===adminSelected))?adminSelected:
+        (d.assignedUserId&&rows.some(x=>x.id===d.assignedUserId)?d.assignedUserId:(rows.find(x=>x.id===cloudUser.id)?.id||rows[0]?.id||cloudUser.id));
+      staffSel.value=preferred;
+    }
+    if(staffWrap)staffWrap.style.display=isManager()?'':'none';
+
     const info=document.getElementById('mapRouteDealerInfo');if(info)info.textContent=d.name+(d.district?' • '+d.district:'');
     const week=document.getElementById('mapRouteWeek'),day=document.getElementById('mapRouteDay'),plan=document.getElementById('mapRoutePlanType');
     if(d.plannedWeek&&week)week.value=String(d.plannedWeek).startsWith('2')?'2':'1';
@@ -70,7 +95,7 @@
 
   async function save(){
     const d=dealer();if(!d)return;
-    const staffId=d.assignedUserId||cloudUser.id;
+    const staffId=document.getElementById('mapRouteStaff')?.value||d.assignedUserId||cloudUser.id;
     if(!isManager()&&staffId!==cloudUser.id){alert('Bu bayi senin sorumluluğunda değil.');return;}
     const planType=document.getElementById('mapRoutePlanType')?.value||'ROUTE1';
     const week=Number(document.getElementById('mapRouteWeek')?.value||1);
@@ -81,7 +106,6 @@
       let rows=await fetchRows(planType,staffId);
       if(!rows.length&&planType==='ROUTE1')rows=fallbackRoute1(staffId);
       const byKey=new Map(rows.map(r=>[Number(r.week_no)+'|'+norm(r.day_name),Array.isArray(r.dealer_ids)?r.dealer_ids.slice():[]]));
-      // Tüm 12 günden çıkar; sonra hedef günün sonuna ekle. Böylece kopya oluşmaz.
       for(const w of [1,2])for(const dy of DAYS){
         const k=w+'|'+dy,ids=byKey.get(k)||[];
         byKey.set(k,ids.filter(id=>id!==d.id));
@@ -94,12 +118,11 @@
 
       if(planType==='ROUTE1'){
         const targetIds=byKey.get(targetKey)||[];
-        // Bayinin plan alanını yeni güne taşı ve hedef gün sırasını normalize et.
-        const {error:e1}=await supabaseClient.from('organization_dealers').update({planned_week:weekText(week),planned_day:day,planned_order:targetIds.indexOf(d.id)+1,updated_by:cloudUser.id,updated_at:now}).eq('organization_id',teamContext.organizationId).eq('id',d.id);if(e1)throw e1;
-        d.plannedWeek=weekText(week);d.plannedDay=day;d.plannedOrder=targetIds.indexOf(d.id)+1;
+        const {error:e1}=await supabaseClient.from('organization_dealers').update({assigned_user_id:staffId,planned_week:weekText(week),planned_day:day,planned_order:targetIds.indexOf(d.id)+1,updated_by:cloudUser.id,updated_at:now}).eq('organization_id',teamContext.organizationId).eq('id',d.id);if(e1)throw e1;
+        d.assignedUserId=staffId;d.plannedWeek=weekText(week);d.plannedDay=day;d.plannedOrder=targetIds.indexOf(d.id)+1;
         for(let i=0;i<targetIds.length;i++){
           const x=(state.dealers||[]).find(z=>z.id===targetIds[i]);if(!x||x.id===d.id)continue;
-          if(x.plannedWeek===weekText(week)&&norm(x.plannedDay)===day&&Number(x.plannedOrder)!==i+1){
+          if(x.assignedUserId===staffId&&x.plannedWeek===weekText(week)&&norm(x.plannedDay)===day&&Number(x.plannedOrder)!==i+1){
             await supabaseClient.from('organization_dealers').update({planned_order:i+1,updated_by:cloudUser.id,updated_at:now}).eq('organization_id',teamContext.organizationId).eq('id',x.id);
             x.plannedOrder=i+1;
           }
@@ -111,6 +134,7 @@
       }
       if(typeof logActivity==='function'){try{await logActivity('ROUTE_TEMPLATE_UPDATED','DEALER',d.id,{action:'MAP_ADD_TO_DAY',planType,week,day,staffId});}catch(_){ }}
       if(status)status.innerHTML='<span class="badge b-ok">Eklendi</span> '+week+'. Hafta '+day+' • '+(planType==='ROUTE1'?'Rut Planı':'Rut Planı2');
+      if(typeof window.refreshMapRouteLivePanel==='function')setTimeout(()=>window.refreshMapRouteLivePanel(),60);
       setTimeout(()=>{document.getElementById('mapRouteAddDialog')?.close();selectedDealerId=null;},500);
     }catch(err){
       console.error('Map route add failed',err);
@@ -125,7 +149,6 @@
     originalRenderMap=window.renderMap;
     window.renderMap=function(){
       if(!map)return originalRenderMap.apply(this,arguments);
-      // Eski render'ın fitBounds/marker temizliği davranışını koruyup popup içeriğini zenginleştiriyoruz.
       originalRenderMap.apply(this,arguments);
       try{
         const dealers=(state.dealers||[]).filter(d=>(typeof dealerVisibleToCurrentUser!=='function'||dealerVisibleToCurrentUser(d))&&isValidDealerCoordinate(d.lat,d.lng));
@@ -139,7 +162,6 @@
         });
       }catch(err){console.warn('Harita popup rut butonu eklenemedi',err);}
     };
-    // Mevcut harita açıksa popup'ları hemen yenile.
     try{window.renderMap();}catch(_){ }
     return true;
   }
