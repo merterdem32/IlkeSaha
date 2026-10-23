@@ -1,5 +1,5 @@
-// İlke Saha - Saha1 cari kodu eşleştirme ve kalıcı gösterim
-// v2: bulut hydration tamamlanmadan çalışmaz; state değişirse yeniden eşleştirir; eşleşmeleri doğrudan DB'ye yazar.
+// İlke Saha - Saha1 cari kodu eşleştirme
+// v3: bayi adını değiştirmez; cari_code alanına yazar. Daha önce öneklenmiş isimleri temizler.
 (()=>{
   const PREFIX_RE=/^(?:TCR\d{2}\.\d{3}|\d{3}\.\d{2}\.\d{4}(?:-Z)?)[\s-]+/i;
   let lastSignature='',running=false,installTimer=null;
@@ -60,13 +60,14 @@
       const coordCounts=sourceCoordCounts(source),changes=[];let matched=0;
       for(const d of mine){
         let m=d.cariCode?source.find(r=>r.code===d.cariCode)||null:null;if(!m)m=bestMatch(d,source,coordCounts);if(!m)continue;matched++;
-        const base=String(d.name||'').replace(PREFIX_RE,'').trim(),next=m.code+' - '+base;
-        if(d.cariCode!==m.code||d.name!==next){d.cariCode=m.code;d.name=next;changes.push({id:d.id,code:m.code,name:next});}
+        const base=String(d.name||'').replace(PREFIX_RE,'').trim();
+        if(d.cariCode!==m.code||d.name!==base){d.cariCode=m.code;d.name=base;changes.push({id:d.id,code:m.code,name:base});}
       }
       if(changes.length){await persist(changes);try{localStorage.setItem(storeKey,JSON.stringify(state));}catch(_){ }if(typeof renderAll==='function')renderAll();if(typeof renderMap==='function')try{renderMap();}catch(_){}}
       lastSignature=signature(mine);
       window.SAHA1_CARI_MATCH_SUMMARY={total:mine.length,matched,changed:changes.length,source:source.length};
       console.info('Saha1 cari kodu eşleştirme',window.SAHA1_CARI_MATCH_SUMMARY);
+      if(typeof window.refreshCariCodeDisplay==='function')setTimeout(window.refreshCariCodeDisplay,0);
     }catch(err){console.error('Saha1 cari kodu kaydı başarısız',err);lastSignature='';}
     finally{running=false;}
   }
