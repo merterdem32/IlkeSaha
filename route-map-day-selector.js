@@ -11,7 +11,7 @@
     s.id='routeMapDaySelectorStyles';
     s.textContent=`
       .route-map-topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-      .route-map-status{min-width:0;flex:1 1 420px}
+      .route-map-status{min-width:0;flex:1 1 420px;margin-bottom:0!important}
       .route-map-day-picker{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap}
       .route-map-day-picker .route-map-picker-label{font-weight:800;color:#334155;margin-right:2px;white-space:nowrap}
       .route-map-day-picker select{width:auto;min-width:118px;max-width:160px;margin:0;padding:7px 30px 7px 9px;font-size:13px}
@@ -20,24 +20,25 @@
     document.head.appendChild(s);
   }
 
-  function emitChange(el){
-    if(!el)return;
-    el.dispatchEvent(new Event('change',{bubbles:true}));
-  }
+  function emitChange(el){if(el)el.dispatchEvent(new Event('change',{bubbles:true}));}
 
   function decorate(infoId,kind){
     const info=document.getElementById(infoId);if(!info)return false;
     const wrapId=kind==='r1'?'routeMapTopbar':'route2MapTopbar';
     let top=document.getElementById(wrapId);
     if(!top){
+      const parent=info.parentElement;if(!parent)return false;
       top=document.createElement('div');top.id=wrapId;top.className='route-map-topbar';
-      const status=document.createElement('div');status.className='route-map-status';status.id=infoId+'Status';
-      while(info.firstChild)status.appendChild(info.firstChild);
+      parent.insertBefore(top,info);
+      info.classList.add('route-map-status');info.style.marginBottom='0';
+      top.appendChild(info);
       const picker=document.createElement('div');picker.className='route-map-day-picker';
       picker.innerHTML='<span class="route-map-picker-label">Haritada gün:</span>'+
         '<select id="'+(kind==='r1'?'routeMapWeekPicker':'route2MapWeekPicker')+'"></select>'+
         '<select id="'+(kind==='r1'?'routeMapDayPicker':'route2MapDayPicker')+'"></select>';
-      top.append(status,picker);info.appendChild(top);
+      top.appendChild(picker);
+    }else if(!top.contains(info)){
+      info.classList.add('route-map-status');info.style.marginBottom='0';top.insertBefore(info,top.firstChild);
     }
     bind(kind);
     return true;
@@ -95,11 +96,7 @@
     sync(kind);
   }
 
-  function repair(){
-    ensureStyles();
-    decorate('routeMapInfo','r1');
-    decorate('route2MapInfo','r2');
-  }
+  function repair(){ensureStyles();decorate('routeMapInfo','r1');decorate('route2MapInfo','r2');}
 
   function start(){
     clearInterval(timer);let n=0;
