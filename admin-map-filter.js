@@ -3,6 +3,7 @@
   let selectedStaff='all';
   let installTimer=null;
   let originalRenderMap=null;
+  let shouldFit=true;
 
   function isManager(){return typeof teamContext!=='undefined'&&teamContext?.role==='MANAGER';}
   function ready(){return isManager()&&typeof state!=='undefined'&&Array.isArray(state.dealers);}
@@ -50,6 +51,7 @@
       '<span id="adminMapFilterSummary"></span>';
     bar.querySelectorAll('[data-staff]').forEach(btn=>btn.addEventListener('click',()=>{
       selectedStaff=btn.dataset.staff||'all';
+      shouldFit=true;
       window.adminMapSelectedStaff=selectedStaff;
       ensureBar();
       if(typeof window.renderMap==='function')window.renderMap();
@@ -73,7 +75,7 @@
     let shown=0;
     (mainMarkers||[]).forEach(marker=>{
       const d=dealerForMarker(marker);
-      if(!d)return; // Ev pini
+      if(!d)return;
       const should=selectedStaff==='all'||d.assignedUserId===selectedStaff;
       const on=map.hasLayer(marker);
       try{
@@ -85,12 +87,12 @@
     const summary=document.getElementById('adminMapFilterSummary');
     if(summary)summary.textContent=shown+' bayi haritada';
 
-    // Filtre değişiminde yalnızca ilgili bayilere kadrajla; sonraki renderlarda kullanıcı zoom'unu bozma.
-    if(dealers.length){
+    if(shouldFit&&dealers.length){
       try{
         const pts=dealers.map(d=>[Number(d.lat),Number(d.lng)]);
         map.fitBounds(pts,{padding:[30,30],maxZoom:14});
       }catch(_){ }
+      shouldFit=false;
     }
   }
 
