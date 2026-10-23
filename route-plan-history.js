@@ -24,7 +24,7 @@
   function fallbackRoute1(staffId){
     const out=[];
     for(const w of [1,2])for(const d of DAYS){
-      const ids=(state?.dealers||[]).filter(x=>x.isActive!==false&&x.assignedUserId===staffId&&x.plannedWeek===weekText(w)&&norm(x.plannedDay)===d)
+      const ids=((typeof state!=='undefined'&&state?.dealers)||[]).filter(x=>x.isActive!==false&&x.assignedUserId===staffId&&x.plannedWeek===weekText(w)&&norm(x.plannedDay)===d)
         .sort((a,b)=>(Number(a.plannedOrder)||999)-(Number(b.plannedOrder)||999)).map(x=>x.id);
       out.push({week_no:w,day_name:d,dealer_ids:ids});
     }
@@ -54,7 +54,7 @@
   async function syncLegacyRoute1(staffId,rows){
     const placement=new Map();
     normalizedRows(rows).forEach(r=>(r.dealer_ids||[]).forEach((id,i)=>placement.set(id,{week:r.week_no,day:r.day_name,order:i+1})));
-    const mine=(state?.dealers||[]).filter(d=>d.assignedUserId===staffId);
+    const mine=((typeof state!=='undefined'&&state?.dealers)||[]).filter(d=>d.assignedUserId===staffId);
     const now=new Date().toISOString();
     for(const d of mine){
       const p=placement.get(d.id);
@@ -78,7 +78,7 @@
       const payload=normalizedRows(snap.rows).map(r=>({organization_id:teamContext.organizationId,plan_type:planType,staff_user_id:staffId,week_no:r.week_no,day_name:r.day_name,dealer_ids:r.dealer_ids,updated_by:cloudUser.id,updated_at:now}));
       const {error}=await supabaseClient.from('route_plan_templates').upsert(payload,{onConflict:'organization_id,plan_type,staff_user_id,week_no,day_name'});if(error)throw error;
       if(planType==='ROUTE1')await syncLegacyRoute1(staffId,snap.rows);
-      try{localStorage.setItem(storeKey,JSON.stringify(state));}catch(_){ }
+      try{if(typeof storeKey!=='undefined'&&typeof state!=='undefined')localStorage.setItem(storeKey,JSON.stringify(state));}catch(_){ }
       if(typeof loadStateFromCloud==='function')await loadStateFromCloud();
       if(typeof renderAll==='function')renderAll();
       if(planType==='ROUTE2'&&staffId===cloudUser.id&&typeof refreshRoutePlan2Templates==='function')await refreshRoutePlan2Templates();
@@ -98,7 +98,7 @@
     if(!ready()){alert('Bulut bağlantısı henüz hazır değil.');return;}ensureDialog();staffId=staffId||currentStaff();const hist=read(planType,staffId),list=document.getElementById('routePlanHistoryList'),sub=document.getElementById('routePlanHistorySub');
     if(sub)sub.textContent=(planType==='ROUTE1'?'Rut Planı':'Rut Planı2')+' • Son '+MAX+' sürüm bu cihazda saklanır.';
     if(list)list.innerHTML=hist.length?hist.map((x,i)=>'<div class="card" style="margin:8px 0;padding:12px"><div class="toolbar" style="justify-content:space-between;align-items:center"><div><strong>'+(i+1)+'. '+esc(new Date(x.createdAt).toLocaleString('tr-TR'))+'</strong><div class="muted" style="margin-top:4px">'+esc(x.reason||'Plan yedeği')+'</div></div><button class="btn btn-primary" type="button" onclick="routePlanHistoryRestore(\''+esc(planType)+'\',\''+esc(staffId)+'\',\''+esc(x.id)+'\')">Bu Plana Dön</button></div></div>').join(''):'<div class="note">Henüz plan yedeği oluşmadı. İlk plan değişikliğinde otomatik olarak alınacak.</div>';
-    d=document.getElementById('routePlanHistoryDialog');d.showModal();
+    const dialog=document.getElementById('routePlanHistoryDialog');dialog?.showModal();
   }
 
   function addButton(sectionId,planType){
@@ -107,13 +107,23 @@
     const b=document.createElement('button');b.id='routePlanHistoryBtn-'+planType;b.type='button';b.className='btn btn-ghost';b.style.width='100%';b.style.marginTop='8px';b.textContent='↶ Önceki Planlar';b.onclick=()=>open(planType,currentStaff());card.appendChild(b);
   }
 
-  function wrapPlannerApprove(){
-    if(typeof window.approveTwoWeekRoutePlan!=='function'||window.__routeHistoryPlannerWrapped)return false;
-    window.__routeHistoryPlannerWrapped=true;const original=window.approveTwoWeekRoutePlan;
-    window.approveTwoWeekRoutePlan=async function(){try{await capture('ROUTE1',cloudUser?.id,'Rut Planlayıcı onayı öncesi');}catch(_){ }return original.apply(this,arguments);};return true;
+  function wrap(name,flag,context){
+    const fn=window[name];if(typeof fn!=='function'||window[flag])return false;
+    window[flag]=true;window[name]=async function(){
+      try{const c=context();if(c?.staffId)await capture(c.planType,c.staffId,c.reason);}catch(err){console.warn('Plan yedeği atlandı',err);}
+      return fn.apply(this,arguments);
+    };return true;
+  }
+  function wrapAll(){
+    wrap('mapRouteLiveMutate','__routeHistoryMapLiveWrapped',()=>({planType:document.getElementById('mapRouteLivePlan')?.value||'ROUTE1',staffId:document.getElementById('mapRouteLiveStaff')?.value||cloudUser?.id,reason:'Harita plan düzenlemesi öncesi'}));
+    wrap('mapRouteAddSave','__routeHistoryMapAddWrapped',()=>({planType:document.getElementById('mapRoutePlanType')?.value||'ROUTE1',staffId:document.getElementById('mapRouteStaff')?.value||cloudUser?.id,reason:'Haritadan güne bayi ekleme öncesi'}));
+    wrap('routeTemplateEditorSave','__routeHistoryEditorWrapped',()=>({planType:document.getElementById('routeTemplatePlanType')?.value||'ROUTE1',staffId:document.getElementById('routeTemplateStaff')?.value||cloudUser?.id,reason:'Rut planı editörü kaydı öncesi'}));
+    wrap('approveTwoWeekRoutePlan','__routeHistoryPlannerWrapped',()=>({planType:'ROUTE1',staffId:cloudUser?.id,reason:'Rut Planlayıcı onayı öncesi'}));
+    wrap('deactivateDealerFromRoute','__routeHistoryDeactivate1Wrapped',()=>({planType:'ROUTE1',staffId:cloudUser?.id,reason:'Bayi rut dışı bırakma öncesi'}));
+    wrap('deactivateRoute2Dealer','__routeHistoryDeactivate2Wrapped',()=>({planType:'ROUTE2',staffId:cloudUser?.id,reason:'Rut Planı2 bayi rut dışı bırakma öncesi'}));
   }
 
-  function install(){ensureDialog();addButton('route','ROUTE1');addButton('route2','ROUTE2');wrapPlannerApprove();}
+  function install(){ensureDialog();addButton('route','ROUTE1');addButton('route2','ROUTE2');wrapAll();}
   window.routePlanHistory={capture,list:read,restore,open};
   window.openRoutePlanHistory=open;
   window.routePlanHistoryRestore=restore;
