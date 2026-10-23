@@ -11,9 +11,8 @@ function renderRoute(){
   const visitedCount=ds.filter(d=>dealerVisitedToday(d.id)).length;
   routeSummary.innerHTML=
     '<strong>'+visitedCount+'/'+ds.length+' ziyaret tamamlandı</strong> '+
-    (located.length?'• işaretli konumlara göre yaklaşık <strong>'+km.toFixed(1)+' km</strong> ':'')+
     (missing?'• <span class="badge b-warn">'+missing+' konum eksik</span> ':'')+
-    (located.length?'• kaba süre tahmini '+(((visitMin+driveMin)/60)|0)+' sa '+((visitMin+driveMin)%60)+' dk <span class="muted">(trafik servisi bağlanmadı)</span>':'');
+    '<span class="muted">Karayolu sırası/mesafesi hesaplandığında burada güncellenecek.</span>';
 
   routeList.innerHTML=ds.map((d,i)=>{
     const visited=dealerVisitedToday(d.id);
@@ -44,51 +43,43 @@ function initRouteMap(){
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(routeMap);
 }
 
-function renderRouteMap(){
+async function renderRouteMap(){
   if(!routeMap)return;
   routeMap.eachLayer(l=>{ if(!(l instanceof L.TileLayer)) routeMap.removeLayer(l); });
 
   const routeDealers=(state.todayRoute||[])
     .map((id,index)=>({dealer:state.dealers.find(x=>x.id===id),routeIndex:index}))
     .filter(x=>x.dealer);
-
   const valid=routeDealers.filter(x=>isValidDealerCoordinate(x.dealer.lat,x.dealer.lng));
   const missing=routeDealers.filter(x=>!isValidDealerCoordinate(x.dealer.lat,x.dealer.lng));
-
   const homeOk=isValidDealerCoordinate(state.home?.lat,state.home?.lng);
-  const homePoint=homeOk?[Number(state.home.lat),Number(state.home.lng)]:[41.0082,28.9784];
-  const points=[homePoint];
+  const home={lat:homeOk?Number(state.home.lat):41.0082,lng:homeOk?Number(state.home.lng):28.9784};
+  const homePoint=[home.lat,home.lng];
 
   L.marker(homePoint).addTo(routeMap).bindPopup('Ev / Başlangıç');
-
   valid.forEach(({dealer:d,routeIndex})=>{
-    const lat=Number(d.lat), lng=Number(d.lng);
-    const icon=L.divIcon({
-      className:'',
-      html:'<div style="width:30px;height:30px;border-radius:50%;background:#e30613;color:white;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.28);display:grid;place-items:center;font-weight:800;font-size:13px">'+(routeIndex+1)+'</div>',
-      iconSize:[30,30],
-      iconAnchor:[15,15]
-    });
-    points.push([lat,lng]);
-    L.marker([lat,lng],{icon}).addTo(routeMap)
-      .bindPopup('<strong>'+(routeIndex+1)+'. '+esc(d.name)+'</strong><br>'+esc(d.district||''));
+    const icon=L.divIcon({className:'',html:'<div style="width:30px;height:30px;border-radius:50%;background:#e30613;color:white;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.28);display:grid;place-items:center;font-weight:800;font-size:13px">'+(routeIndex+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
+    L.marker([Number(d.lat),Number(d.lng)],{icon}).addTo(routeMap).bindPopup('<strong>'+(routeIndex+1)+'. '+esc(d.name)+'</strong><br>'+esc(d.district||''));
   });
 
-  if(points.length>1){
-    points.push(homePoint);
-    routeLayer=L.polyline(points,{weight:4,color:'#e30613',opacity:.75}).addTo(routeMap);
-    routeMap.fitBounds(points,{padding:[40,40],maxZoom:15});
-  }else{
-    routeMap.setView(homePoint,10);
-  }
-
   const info=document.getElementById('routeMapInfo');
-  if(info){
-    info.innerHTML='<strong>'+valid.length+'/'+routeDealers.length+' bayi haritada</strong>'+
-      (missing.length
-        ? ' • <span class="badge b-warn">'+missing.length+' konum eksik/geçersiz</span>'+
-          '<div class="muted" style="margin-top:6px">Haritada görünmeyen: '+missing.map(x=>esc(x.dealer.name)).join(', ')+'</div>'
-        : ' • <span class="badge b-ok">Tüm kayıtlı konumlar gösteriliyor</span>');
+  if(!valid.length){routeMap.setView(homePoint,10);if(info)info.innerHTML='<strong>Haritada rota çizmek için konumlu bayi yok.</strong>';return;}
+  const points=[home,...valid.map(x=>({lat:Number(x.dealer.lat),lng:Number(x.dealer.lng)})),home];
+  if(info)info.innerHTML='<strong>'+valid.length+'/'+routeDealers.length+' bayi haritada</strong>'+(missing.length?' • <span class="badge b-warn">'+missing.length+' konum eksik/geçersiz</span>':'')+'<div class="muted" style="margin-top:6px">Gerçek sürüş yolu hazırlanıyor…</div>';
+
+  if(!window.ilkeRoadRouting?.routeGeometry){
+    routeMap.fitBounds([homePoint,...valid.map(x=>[Number(x.dealer.lat),Number(x.dealer.lng)])],{padding:[40,40],maxZoom:15});
+    if(info)info.innerHTML='<strong>'+valid.length+'/'+routeDealers.length+' bayi haritada</strong><div class="muted" style="margin-top:6px">Yol motoru hazırlanıyor. Düz çizgi gösterilmiyor.</div>';
+    return;
+  }
+  const geo=await window.ilkeRoadRouting.routeGeometry(points);
+  if(geo?.latlngs?.length){
+    routeLayer=L.polyline(geo.latlngs,{weight:5,color:'#e30613',opacity:.82,lineJoin:'round'}).addTo(routeMap);
+    routeMap.fitBounds(routeLayer.getBounds(),{padding:[40,40],maxZoom:15});
+    if(info)info.innerHTML='<strong>'+valid.length+'/'+routeDealers.length+' bayi haritada</strong>'+(missing.length?' • <span class="badge b-warn">'+missing.length+' konum eksik/geçersiz</span>':' • <span class="badge b-ok">Tüm kayıtlı konumlar gösteriliyor</span>')+'<div class="muted" style="margin-top:6px">✓ Gerçek sürüş yolu • '+Number(geo.km||0).toFixed(1)+' km • '+Math.round(Number(geo.minutes||0))+' dk</div>';
+  }else{
+    routeMap.fitBounds([homePoint,...valid.map(x=>[Number(x.dealer.lat),Number(x.dealer.lng)])],{padding:[40,40],maxZoom:15});
+    if(info)info.innerHTML='<strong>'+valid.length+'/'+routeDealers.length+' bayi haritada</strong><div class="note" style="margin-top:6px"><span class="badge b-warn">Yol alınamadı</span> Kuş uçuşu çizgi göstermiyoruz. İnternet/yol servisi düzelince rota otomatik çizilecek.</div>';
   }
 }
 
