@@ -1,5 +1,5 @@
 // İlke Saha - Rut Planı2 çalışma alanı
-// v7: günlük sıralama ve harita gerçek karayolu motorunu doğrudan kullanır.
+// v8: günlük sıralama, harita ve Excel aksiyonları aynı sabit panelde tutulur.
 (()=>{
  const K='ilkeSahaRoute2DraftsV4', esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
  let map=null,line=null,markers=[],mapSeq=0;
@@ -56,6 +56,15 @@
  function clear(){if(!draft()?.items?.length){status('Günlük taslak zaten boş.');return}if(!confirm('Rut Planı2 günlük taslağı temizlensin mi? Kaynak plan silinmez.'))return;del();if(typeof renderRoute2==='function')renderRoute2();renderMap();status('Günlük taslak temizlendi.')}
  async function mark(id){if(typeof markRouteVisited==='function')await markRouteVisited(id);render()}
  async function undo(id){if(typeof undoRouteVisited==='function')await undoRouteVisited(id);render()}
- function install(){const sec=document.getElementById('route2'),left=sec?.querySelector('.card.span-4');if(!sec||!left)return false;if(!document.getElementById('route2ActionPanel')){const p=document.createElement('div');p.id='route2ActionPanel';p.innerHTML='<button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="openOutOfRouteVisit()">+ Rota Dışı Ziyaret Ekle</button><div class="muted" style="margin-top:6px">Rutunda olmayan yeni bir firmayı ziyaret ettiysen buradan kaydet.</div><hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0"><button class="btn btn-ghost" style="width:100%" onclick="loadRoute2Today()">Seçili Planı Bugüne Yükle</button><button class="btn btn-accent" style="margin-top:12px;width:100%" onclick="optimizeRoute2()">En Mantıklı Rutu Oluştur</button><div id="route2PublishStatus" class="muted" style="margin-top:12px">Bugünkü rut henüz yöneticiyle paylaşılmadı.</div><button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="publishRoute2()">✓ Bugünkü Rutu Onayla ve Yöneticiye Gönder</button><button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="clearRoute2Today()">Bugünkü rutu temizle</button>';left.appendChild(p)}if(!document.getElementById('route2Map')){const c=document.createElement('div');c.className='card span-12';c.innerHTML='<div id="route2MapInfo" class="muted" style="margin-bottom:10px"></div><div id="route2Map" style="height:420px;border-radius:12px"></div>';sec.querySelector('.grid')?.appendChild(c)}render();return true}
+ function install(){
+   const sec=document.getElementById('route2'),left=sec?.querySelector('.card.span-4');if(!sec||!left)return false;
+   if(!document.getElementById('route2ActionPanel')){
+     const p=document.createElement('div');p.id='route2ActionPanel';
+     p.innerHTML='<button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="openOutOfRouteVisit()">+ Rota Dışı Ziyaret Ekle</button><div class="muted" style="margin-top:6px">Rutunda olmayan yeni bir firmayı ziyaret ettiysen buradan kaydet.</div><hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0"><button class="btn btn-ghost" style="width:100%" onclick="loadRoute2Today()">Seçili Planı Bugüne Yükle</button><button class="btn btn-accent" style="margin-top:12px;width:100%" onclick="optimizeRoute2()">En Mantıklı Rutu Oluştur</button><div id="route2PublishStatus" class="muted" style="margin-top:12px">Bugünkü rut henüz yöneticiyle paylaşılmadı.</div><button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="publishRoute2()">✓ Bugünkü Rutu Onayla ve Yöneticiye Gönder</button><button class="btn btn-ghost" style="margin-top:8px;width:100%" onclick="clearRoute2Today()">Bugünkü rutu temizle</button><hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0"><div class="muted"><strong>Excel Çıktıları</strong></div><button id="route2ExcelExportBtn" class="btn btn-primary" style="margin-top:8px;width:100%" onclick="exportLoadedRouteExcel(\'route2\')">Seçili Günü Excel İndir</button><button id="route2FullExcelExportBtn" class="btn btn-accent" style="margin-top:8px;width:100%" onclick="exportFullRoute2Excel()">Komple Rut Planı2’yi Excel İndir</button>';
+     left.appendChild(p);
+   }
+   if(!document.getElementById('route2Map')){const c=document.createElement('div');c.className='card span-12';c.innerHTML='<div id="route2MapInfo" class="muted" style="margin-bottom:10px"></div><div id="route2Map" style="height:420px;border-radius:12px"></div>';sec.querySelector('.grid')?.appendChild(c)}
+   render();return true;
+ }
  window.renderRoute2Workspace=render;window.loadRoute2Today=load;window.optimizeRoute2=optimize;window.publishRoute2=publish;window.clearRoute2Today=clear;window.markRoute2Visited=mark;window.undoRoute2Visited=undo;let t=setInterval(()=>{if(install())clearInterval(t)},100);
 })();
